@@ -2,6 +2,7 @@
 "use strict";
 
 const LS_KEY = "sokuteiData";
+const API_BASE = "http://127.0.0.1:8791"; // デプロイ後のAPI URL
 
 const EXERCISES = [
   {
@@ -89,6 +90,88 @@ function getDay(key) {
   return state.days[key];
 }
 
+/* ---------- personalization (on-device) ---------- */
+function recentDayKeys(n) {
+  const keys = [];
+  const d = new Date();
+  for (let i = 0; i < n; i++) {
+    const dd = new Date(d); dd.setDate(d.getDate() - i);
+    keys.push(dayKey(dd));
+  }
+  return keys;
+}
+function generateAdvice() {
+  const keys = recentDayKeys(30);
+  const rec = keys.map(k => ({ k, d: state.days[k] })).filter(x => x.d && x.d.morningPain !== null && x.d.morningPain !== undefined);
+  const adv = [];
+  if (rec.length < 3) {
+    adv.push("まずは毎日の記録を続けましょう。3〜4日たつと、あなたの痛みの傾向が見えてきます。");
+    return adv;
+  }
+  // 痛み悪化トレンド(直近3記録 vs その前3記録)
+  if (rec.length >= 6) {
+    const last3 = rec.slice(0, 3).reduce((s, x) => s + x.d.morningPain, 0) / 3;
+    const prev3 = rec.slice(3, 6).reduce((s, x) => s + x.d.morningPain, 0) / 3;
+    if (last3 - prev3 >= 1.5)
+      adv.push("朝の痛みが増える傾向があります。ヒールレイズなど負荷の強い体操は休み、ストレッチとアイシング中心に。2週間以上続くなら受診を検討してください。");
+    else if (prev3 - last3 >= 1.5)
+      adv.push("朝の痛みが減る傾向です。この調子で体操を続けましょう。");
+  }
+  // 強い痛みが続く
+  if (rec.slice(0, 3).every(x => x.d.morningPain >= 7))
+    adv.push("朝の痛みが強い状態(7以上)が続いています。無理せず、早めに整形外科を受診してください。");
+  // 靴と痛みの相関
+  const byShoe = {};
+  rec.forEach(x => (x.d.shoes || []).forEach(s => { (byShoe[s] = byShoe[s] || []).push(x.d.morningPain); }));
+  const shoeAvg = Object.entries(byShoe).filter(([, v]) => v.length >= 2)
+    .map(([s, v]) => ({ s, avg: v.reduce((a, b) => a + b) / v.length, n: v.length }));
+  if (shoeAvg.length >= 2) {
+    shoeAvg.sort((a, b) => b.avg - a.avg);
+    const worst = shoeAvg[0], best = shoeAvg[shoeAvg.length - 1];
+    if (worst.avg - best.avg >= 1.5)
+      adv.push(`「${worst.s}」の日は痛みが強め(平均${worst.avg.toFixed(1)})。「${best.s}」(平均${best.avg.toFixed(1)})が合っているかもしれません。`);
+  }
+  // 体操の翌朝効果
+  const map = {}; rec.forEach(x => map[x.k] = x.d);
+  const afterEx = [], afterNo = [];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const next = map[keys[i]], cur = state.days[keys[i + 1]];
+    if (next && cur && next.morningPain !== null && next.morningPain !== undefined) {
+      (Object.keys(cur.exercises || {}).length > 0 ? afterEx : afterNo).push(next.morningPain);
+    }
+  }
+  if (afterEx.length >= 3 && afterNo.length >= 3) {
+    const a = afterEx.reduce((x, y) => x + y) / afterEx.length;
+    const b = afterNo.reduce((x, y) => x + y) / afterNo.length;
+    if (b - a >= 1) adv.push("体操をした日の翌朝は痛みが軽い傾向にあります。体操が効いています。");
+    else if (a - b >= 1.5) adv.push("体操をした日の翌朝に痛みが強めです。ヒールレイズの回数を減らす等、量を調整しましょう。");
+  }
+  // 歩きすぎ傾向
+  const heavyNext = [], lightNext = [];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const next = map[keys[i]], cur = state.days[keys[i + 1]];
+    if (next && cur && next.morningPain !== null && cur.steps) {
+      (cur.steps >= 6000 ? heavyNext : lightNext).push(next.morningPain);
+    }
+  }
+  if (heavyNext.length >= 2 && lightNext.length >= 2) {
+    const a = heavyNext.reduce((x, y) => x + y) / heavyNext.length;
+    const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
+    if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
+  }
+  // 体操の継続率
+  const last7 = recentDayKeys(7);
+  const exDays7 = last7.filter(k => state.days[k] && Object.keys(state.days[k].exercises).length > 0).length;
+  if (exDays7 >= 5) adv.push(`この1週間で${exDays7}日体操できています。とても良いペースです。`);
+  else if (rec.length >= 7 && exDays7 <= 1)
+    adv.push("体操があまりできていません。まずは「足底筋膜ストレッチ」1種類だけでも毎朝やってみましょう。");
+  // 記録ストリーク
+  let streak = 0;
+  for (const k of recentDayKeys(60)) { if (state.days[k] && state.days[k].morningPain !== null && state.days[k].morningPain !== undefined) streak++; else break; }
+  if (streak >= 7) adv.push(`${streak}日連続で記録中! この記録は診察時にも役立ちます。`);
+  return adv;
+}
+
 /* ---------- helpers ---------- */
 const $ = (sel, el) => (el || document).querySelector(sel);
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
@@ -134,12 +217,16 @@ function renderHome() {
   const day = getDay(key);
   const done = exercisesDoneCount(day);
   const tip = TIPS[new Date().getDate() % TIPS.length];
+  const advice = generateAdvice();
 
   el.innerHTML = `
     <div class="card">
       <div class="big-date">${fmtJP(key)}</div>
       ${state.settings.name ? `<div class="muted">${esc(state.settings.name)}さんの記録</div>` : ""}
     </div>
+
+    ${advice.length ? `<div class="card"><h2>あなたへの提案</h2>
+      ${advice.map(a => `<p style="margin-bottom:8px">・${a}</p>`).join("")}</div>` : ""}
 
     <div class="card">
       <h2>今朝の一歩目の痛み</h2>
@@ -165,7 +252,66 @@ function renderHome() {
       ${painScaleHTML(day.eveningPain, "eveningPain")}
     </div>
 
-    <div class="tip-card">${tip}</div>`;
+    <div class="tip-card">${tip}</div>
+
+    <div class="card" id="feedCard">
+      <h2>足底腱膜炎の最新情報</h2>
+      <p class="muted" id="feedBody">読み込み中…</p>
+    </div>
+    <div class="card" id="insightsCard"></div>`;
+  loadFeed();
+}
+
+/* ---------- feed & insights ---------- */
+let feedLoaded = false;
+function loadFeed() {
+  if (feedLoaded) return;
+  feedLoaded = true;
+  fetch(`${API_BASE}/feed`).then(r => r.json()).then(d => {
+    const body = $("#feedBody");
+    if (!body) return;
+    body.outerHTML = d.items.slice(0, 5).map(i =>
+      `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <div style="font-weight:700;font-size:.92rem">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(i.title)}</a>` : esc(i.title)}</div>
+        <div class="muted">${esc(i.summary)}</div>
+        <div class="muted" style="font-size:.75rem">${esc(i.source)}</div>
+      </div>`).join("") || `<p class="muted">情報を取得できませんでした</p>`;
+  }).catch(() => {
+    const body = $("#feedBody");
+    if (body) body.textContent = "情報を取得できませんでした(オフライン?)";
+  });
+  fetch(`${API_BASE}/insights`).then(r => r.json()).then(d => {
+    const card = $("#insightsCard");
+    if (!card || d.users < 3) { if (card) card.style.display = "none"; return; }
+    card.innerHTML = `<h2>みんなの傾向(匿名集計)</h2>
+      <p class="muted">参加者 ${d.users}人・朝の痛みの平均 ${d.avg_morning_pain ?? "—"}</p>
+      ${d.shoe_stats.length ? `<p class="muted">履物ごとの平均痛み: ${d.shoe_stats.map(s => `${esc(s.shoe)} ${s.avg_pain}(n=${s.n})`).join(" / ")}</p>` : ""}`;
+  }).catch(() => { const c = $("#insightsCard"); if (c) c.style.display = "none"; });
+}
+
+/* ---------- anonymous telemetry (opt-in) ---------- */
+function sendTelemetry() {
+  if (!state.settings.share || !state.settings.anonId) return;
+  const today = todayKey();
+  if (state.settings.lastTelemetry === today) return;
+  const day = state.days[today];
+  if (!day) return;
+  const payload = {
+    anon_id: state.settings.anonId,
+    date: today,
+    morning_pain: day.morningPain,
+    evening_pain: day.eveningPain,
+    steps: day.steps,
+    standing: day.standing,
+    shoes: day.shoes || [],
+    ex_done: exercisesDoneCount(day),
+    ex_total: EXERCISES.length,
+  };
+  fetch(`${API_BASE}/telemetry`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then(r => { if (r.ok) { state.settings.lastTelemetry = today; save(); } }).catch(() => {});
 }
 
 /* ---------- EXERCISE ---------- */
@@ -464,6 +610,14 @@ function renderSettings() {
       <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%">保存</button>
     </div>
     <div class="card">
+      <h2>データの共有(任意)</h2>
+      <p class="muted">ONにすると痛みスコア・歩数・体操実施の統計だけが匿名ID付きで送信され、「みんなの傾向」の集計とアプリ改善に使われます。<strong>名前・メモ・日付の詳細は送信されません</strong>。いつでもOFFにできます。</p>
+      <button class="chip${state.settings.share ? " on" : ""}" id="shareToggle" style="margin-top:8px">
+        ${state.settings.share ? "共有中(タップでOFF)" : "共有はOFF(タップでON)"}
+      </button>
+      ${state.settings.anonId && state.settings.share ? `<p class="muted" style="margin-top:6px">匿名ID: ${state.settings.anonId.slice(0, 8)}…</p>` : ""}
+    </div>
+    <div class="card">
       <h2>データのバックアップ</h2>
       <p class="muted">記録はこのスマホの中だけに保存されます。機種変更前にバックアップを。</p>
       <div class="btn-row">
@@ -530,6 +684,14 @@ document.addEventListener("click", e => {
     day.notes = $("#notesInput").value;
     save(); toast("保存しました"); return;
   }
+  if (e.target.id === "shareToggle") {
+    state.settings.share = !state.settings.share;
+    if (state.settings.share && !state.settings.anonId && crypto.randomUUID)
+      state.settings.anonId = crypto.randomUUID();
+    if (!state.settings.share) state.settings.lastTelemetry = null;
+    save(); renderSettings(); sendTelemetry();
+    return;
+  }
   if (e.target.id === "saveSettingsBtn") {
     state.settings.name = $("#nameInput").value.trim();
     state.settings.shoePresets = $("#shoesInput").value.split(/[,、]/).map(s => s.trim()).filter(Boolean);
@@ -579,6 +741,7 @@ document.addEventListener("change", e => {
 
 /* ---------- init ---------- */
 switchTab("home");
+sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
