@@ -2,7 +2,8 @@
 "use strict";
 
 const LS_KEY = "sokuteiData";
-const API_BASE = "http://127.0.0.1:8791"; // デプロイ後のAPI URL
+// バックエンドAPIのURL。空ならフィードはPubMedを直接取得し、テレメトリは無効。
+const API_BASE = "";
 
 const EXERCISES = [
   {
@@ -263,23 +264,51 @@ function renderHome() {
 }
 
 /* ---------- feed & insights ---------- */
+const FEED_TIPS = [
+  { title: "朝イチストレッチが効く理由", summary: "睡眠中に足底筋膜は縮みます。起きてすぐ足をつく前にストレッチすると、つっぱり感と痛みを抑えられます。", url: "", source: "ケア手帳 編集" },
+  { title: "高負荷ストレッチ(ヒールレイズ)の研究", summary: "段差でのヒールレイズを週3回行うプログラムで、3ヶ月後の痛み改善がストレッチのみより大きかった報告があります(Rathleffら 2015)。", url: "https://pubmed.ncbi.nlm.nih.gov/25145882/", source: "研究紹介" },
+  { title: "靴とインソール", summary: "土踏まずを支えるインソールやクッション性のある靴は痛み軽減に有効とされています。薄い靴・裸足は避けましょう。", url: "", source: "ケア手帳 編集" },
+];
 let feedLoaded = false;
+async function fetchPubMedItems() {
+  const q = encodeURIComponent("plantar fasciitis");
+  const r1 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&sort=pubdate&retmax=5&retmode=json`);
+  const ids = (await r1.json()).esearchresult.idlist;
+  if (!ids || !ids.length) return [];
+  const r2 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(",")}&retmode=json`);
+  const data = (await r2.json()).result;
+  return ids.map(pmid => {
+    const r = data[pmid] || {};
+    return {
+      title: (r.title || "").replace(/\.$/, ""),
+      summary: `${r.source || ""} ${r.pubdate || ""}`.trim(),
+      url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`,
+      source: "PubMed 最新論文",
+    };
+  });
+}
 function loadFeed() {
   if (feedLoaded) return;
   feedLoaded = true;
-  fetch(`${API_BASE}/feed`).then(r => r.json()).then(d => {
+  const render = items => {
     const body = $("#feedBody");
     if (!body) return;
-    body.outerHTML = d.items.slice(0, 5).map(i =>
+    body.outerHTML = items.slice(0, 5).map(i =>
       `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
         <div style="font-weight:700;font-size:.92rem">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(i.title)}</a>` : esc(i.title)}</div>
         <div class="muted">${esc(i.summary)}</div>
         <div class="muted" style="font-size:.75rem">${esc(i.source)}</div>
       </div>`).join("") || `<p class="muted">情報を取得できませんでした</p>`;
-  }).catch(() => {
+  };
+  const load = API_BASE
+    ? fetch(`${API_BASE}/feed`).then(r => r.json()).then(d => d.items)
+    : fetchPubMedItems().then(items => FEED_TIPS.concat(items));
+  load.then(render).catch(() => {
     const body = $("#feedBody");
-    if (body) body.textContent = "情報を取得できませんでした(オフライン?)";
+    if (body) body.outerHTML = FEED_TIPS.map(i =>
+      `<div style="padding:8px 0"><div style="font-weight:700;font-size:.92rem">${esc(i.title)}</div><div class="muted">${esc(i.summary)}</div></div>`).join("");
   });
+  if (!API_BASE) return;
   fetch(`${API_BASE}/insights`).then(r => r.json()).then(d => {
     const card = $("#insightsCard");
     if (!card || d.users < 3) { if (card) card.style.display = "none"; return; }
@@ -291,7 +320,7 @@ function loadFeed() {
 
 /* ---------- anonymous telemetry (opt-in) ---------- */
 function sendTelemetry() {
-  if (!state.settings.share || !state.settings.anonId) return;
+  if (!API_BASE || !state.settings.share || !state.settings.anonId) return;
   const today = todayKey();
   if (state.settings.lastTelemetry === today) return;
   const day = state.days[today];
@@ -611,7 +640,7 @@ function renderSettings() {
     </div>
     <div class="card">
       <h2>データの共有(任意)</h2>
-      <p class="muted">ONにすると痛みスコア・歩数・体操実施の統計だけが匿名ID付きで送信され、「みんなの傾向」の集計とアプリ改善に使われます。<strong>名前・メモ・日付の詳細は送信されません</strong>。いつでもOFFにできます。</p>
+      <p class="muted">ONにすると痛みスコア・歩数・体操実施の統計だけが匿名ID付きで送信され、「みんなの傾向」の集計とアプリ改善に使われます。<strong>名前・メモ・日付の詳細は送信されません</strong>。いつでもOFFにできます。${API_BASE ? "" : "(現在サーバー未接続のため無効)"}</p>
       <button class="chip${state.settings.share ? " on" : ""}" id="shareToggle" style="margin-top:8px">
         ${state.settings.share ? "共有中(タップでOFF)" : "共有はOFF(タップでON)"}
       </button>
