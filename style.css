@@ -138,6 +138,27 @@ label.field span { display: block; font-size: .8rem; color: var(--ink-soft); fon
   font-size: .9rem; z-index: 60; white-space: nowrap;
 }
 
+/* ---- 使いやすさ(高齢者向け) ---- */
+/* 高コントラスト */
+body.hc {
+  --ink: #111;
+  --ink-soft: #3d3d3d;
+  --line: #8a8a8a;
+  --card: #fff;
+}
+body.hc .card, body.hc .ex-item { border: 1.5px solid var(--line); box-shadow: none; }
+body.hc .chip { border-color: #666; color: #111; }
+body.hc .chip.on { border-width: 3px; }
+body.hc .btn { border-color: #444; }
+
+/* シンプルモード: 記録・グラフ・レポートを隠す */
+body.simple .nav-btn[data-tab="log"],
+body.simple .nav-btn[data-tab="chart"],
+body.simple .nav-btn[data-tab="report"],
+body.simple #feedCard,
+body.simple #insightsCard,
+body.simple .adv-hide { display: none !important; }
+
 .streak { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 12px; font-weight: 700; font-size: .9rem; }
 .tip-card { background: #FDF3E3; border-radius: var(--radius); padding: 14px; font-size: .88rem; border-left: 4px solid #E8B04B; }
 

@@ -80,7 +80,7 @@ function loadState() {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) { /* corrupted data falls through to fresh state */ }
-  return { settings: { name: "", shoePresets: DEFAULT_SHOES.slice() }, days: {} };
+  return { settings: { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false }, days: {} };
 }
 let state = loadState();
 function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
@@ -197,6 +197,13 @@ function toast(msg) {
   clearTimeout(t._h);
   t._h = setTimeout(() => t.classList.add("hidden"), 1800);
 }
+const FONT_SIZES = { normal: 18, large: 21, huge: 24 };
+function applyUi() {
+  const s = state.settings;
+  document.documentElement.style.fontSize = (FONT_SIZES[s.font] || 18) + "px";
+  document.body.classList.toggle("hc", !!s.hc);
+  document.body.classList.toggle("simple", !!s.simple);
+}
 function exercisesDoneCount(day) {
   return EXERCISES.filter(e => (day.exercises[e.id] || 0) >= e.sets).length;
 }
@@ -260,7 +267,7 @@ function renderHome() {
       <p class="muted" id="feedBody">読み込み中…</p>
     </div>
     <div class="card" id="insightsCard"></div>`;
-  loadFeed();
+  if (!state.settings.simple) loadFeed();
 }
 
 /* ---------- feed & insights ---------- */
@@ -631,6 +638,21 @@ function renderSettings() {
   const el = $("#tab-settings");
   el.innerHTML = `
     <div class="card">
+      <h2>使いやすさ</h2>
+      <h3>文字の大きさ</h3>
+      <div class="chips">
+        <button class="chip${(state.settings.font || "normal") === "normal" ? " on" : ""}" data-font="normal">ふつう</button>
+        <button class="chip${state.settings.font === "large" ? " on" : ""}" data-font="large">大きい</button>
+        <button class="chip${state.settings.font === "huge" ? " on" : ""}" data-font="huge">とても大きい</button>
+      </div>
+      <h3>見やすさ</h3>
+      <div class="chips">
+        <button class="chip${state.settings.hc ? " on" : ""}" id="hcToggle">${state.settings.hc ? "高コントラスト ON" : "高コントラスト OFF"}</button>
+        <button class="chip${state.settings.simple ? " on" : ""}" id="simpleToggle">${state.settings.simple ? "シンプルモード ON" : "シンプルモード OFF"}</button>
+      </div>
+      <p class="muted" style="margin-top:8px">シンプルモード: 「ホーム」と「体操」だけに絞った表示にします。</p>
+    </div>
+    <div class="card">
       <h2>設定</h2>
       <label class="field"><span>お名前(レポートに表示・任意)</span>
         <input type="text" id="nameInput" value="${esc(state.settings.name)}" placeholder="例: 山田 花子"></label>
@@ -665,6 +687,7 @@ function renderSettings() {
 let activeTab = "home";
 const renderers = { home: renderHome, exercise: renderExercises, log: renderLog, chart: renderChart, report: renderReport, settings: renderSettings };
 function switchTab(tab) {
+  if (state.settings.simple && ["log", "chart", "report"].includes(tab)) tab = "home";
   activeTab = tab;
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
   $("#tab-" + tab).classList.remove("hidden");
@@ -712,6 +735,15 @@ document.addEventListener("click", e => {
     day.steps = v === "" ? null : Number(v);
     day.notes = $("#notesInput").value;
     save(); toast("保存しました"); return;
+  }
+  const fontBtn = e.target.closest("[data-font]");
+  if (fontBtn) { state.settings.font = fontBtn.dataset.font; save(); applyUi(); renderSettings(); return; }
+  if (e.target.id === "hcToggle") { state.settings.hc = !state.settings.hc; save(); applyUi(); renderSettings(); return; }
+  if (e.target.id === "simpleToggle") {
+    state.settings.simple = !state.settings.simple;
+    save(); applyUi(); renderSettings();
+    if (state.settings.simple && ["log", "chart", "report"].includes(activeTab)) switchTab("home");
+    return;
   }
   if (e.target.id === "shareToggle") {
     state.settings.share = !state.settings.share;
@@ -769,6 +801,12 @@ document.addEventListener("change", e => {
 });
 
 /* ---------- init ---------- */
+const qp = new URLSearchParams(location.search);
+if (["normal", "large", "huge"].includes(qp.get("font"))) state.settings.font = qp.get("font");
+if (qp.get("hc") === "1") state.settings.hc = true;
+if (qp.get("simple") === "1") state.settings.simple = true;
+save();
+applyUi();
 switchTab("home");
 sendTelemetry();
 if ("serviceWorker" in navigator) {
