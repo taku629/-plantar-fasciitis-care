@@ -653,6 +653,13 @@ function renderSettings() {
       <p class="muted" style="margin-top:8px">シンプルモード: 「ホーム」と「体操」だけに絞った表示にします。</p>
     </div>
     <div class="card">
+      <h2>リマインド通知</h2>
+      <p class="muted">「ホーム画面に追加」したアプリで通知を許可すると、1日1回ほどストレッチと記録のリマインドが届きます(通知タイミングはブラウザが調整します)。</p>
+      <button class="chip${state.settings.remind ? " on" : ""}" id="remindToggle" style="margin-top:8px">
+        ${state.settings.remind ? "リマインド ON(タップでOFF)" : "リマインド OFF(タップでON)"}
+      </button>
+    </div>
+    <div class="card">
       <h2>設定</h2>
       <label class="field"><span>お名前(レポートに表示・任意)</span>
         <input type="text" id="nameInput" value="${esc(state.settings.name)}" placeholder="例: 山田 花子"></label>
@@ -743,6 +750,33 @@ document.addEventListener("click", e => {
     state.settings.simple = !state.settings.simple;
     save(); applyUi(); renderSettings();
     if (state.settings.simple && ["log", "chart", "report"].includes(activeTab)) switchTab("home");
+    return;
+  }
+  if (e.target.id === "remindToggle") {
+    if (state.settings.remind) {
+      state.settings.remind = false; save(); renderSettings();
+      navigator.serviceWorker && navigator.serviceWorker.ready
+        .then(r => r.periodicSync && r.periodicSync.unregister("daily-reminder"));
+      toast("リマインドOFF");
+      return;
+    }
+    if (!("Notification" in window) || !navigator.serviceWorker) {
+      toast("このブラウザは通知に対応していません"); return;
+    }
+    Notification.requestPermission().then(p => {
+      if (p !== "granted") { toast("通知が許可されませんでした"); return; }
+      navigator.serviceWorker.ready.then(reg => {
+        const done = () => {
+          state.settings.remind = true; save(); renderSettings();
+          reg.showNotification("足底腱膜炎ケア手帳", { body: "リマインドを設定しました", icon: "icons/icon-192.png" });
+        };
+        if (reg.periodicSync)
+          reg.periodicSync.register("daily-reminder", { minInterval: 12 * 3600 * 1000 })
+            .then(done)
+            .catch(() => { done(); toast("定期通知の登録に失敗(ホーム画面追加済み?)"); });
+        else { done(); toast("この環境はアプリ内通知のみ対応"); }
+      });
+    });
     return;
   }
   if (e.target.id === "shareToggle") {

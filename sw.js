@@ -1,4 +1,4 @@
-const CACHE = "sokutei-care-v3";
+const CACHE = "sokutei-care-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -28,4 +28,22 @@ self.addEventListener("fetch", e => {
       return res;
     }))
   );
+});
+
+self.addEventListener("periodicsync", e => {
+  if (e.tag === "daily-reminder") {
+    e.waitUntil(self.registration.showNotification("足底腱膜炎ケア手帳", {
+      body: "ストレッチと痛み記録の時間です",
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      tag: "daily-reminder",
+    }));
+  }
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: "window" }).then(list => {
+    if (list.length) return list[0].focus();
+    return clients.openWindow("./index.html");
+  }));
 });
