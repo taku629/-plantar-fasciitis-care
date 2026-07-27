@@ -75,15 +75,61 @@ const DEFAULT_SHOES = ["運動靴", "インソール付き靴", "革靴", "サ�
 function blankDay() {
   return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {} };
 }
+function defaultSettings() {
+  return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, anonId: null, lastTelemetry: null };
+}
+function clampPain(v) {
+  return (typeof v === "number" && isFinite(v)) ? Math.min(Math.max(Math.round(v), 0), 10) : null;
+}
+function sanitizeDay(x) {
+  const d = blankDay();
+  if (!x || typeof x !== "object" || Array.isArray(x)) return d;
+  d.morningPain = clampPain(x.morningPain);
+  d.eveningPain = clampPain(x.eveningPain);
+  d.steps = (typeof x.steps === "number" && isFinite(x.steps) && x.steps >= 0) ? Math.min(Math.round(x.steps), 200000) : null;
+  d.standing = STANDING_OPTS.some(o => o.id === x.standing) ? x.standing : null;
+  d.shoes = Array.isArray(x.shoes) ? x.shoes.filter(s => typeof s === "string").slice(0, 10) : [];
+  d.notes = typeof x.notes === "string" ? x.notes.slice(0, 5000) : "";
+  if (x.exercises && typeof x.exercises === "object" && !Array.isArray(x.exercises)) {
+    for (const [k, v] of Object.entries(x.exercises)) {
+      if (EXERCISES.some(e => e.id === k) && typeof v === "number" && isFinite(v))
+        d.exercises[k] = Math.min(Math.max(Math.round(v), 0), 20);
+    }
+  }
+  return d;
+}
+function normalizeState(s) {
+  if (!s || typeof s !== "object" || Array.isArray(s)) return null;
+  const settings = (s.settings && typeof s.settings === "object" && !Array.isArray(s.settings)) ? s.settings : {};
+  const days = {};
+  if (s.days && typeof s.days === "object" && !Array.isArray(s.days)) {
+    for (const [k, v] of Object.entries(s.days)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k)) days[k] = sanitizeDay(v);
+    }
+  }
+  return { settings: { ...defaultSettings(), ...settings }, days };
+}
 function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { /* corrupted data falls through to fresh state */ }
-  return { settings: { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false }, days: {} };
+    if (!raw) return { settings: defaultSettings(), days: {} };
+    const s = normalizeState(JSON.parse(raw));
+    if (s) return s;
+    localStorage.removeItem(LS_KEY); // 形が違うデータは破棄して復旧
+    return { settings: defaultSettings(), days: {} };
+  } catch (e) {
+    try { localStorage.removeItem(LS_KEY); } catch (e2) { /* ignore */ }
+    return { settings: defaultSettings(), days: {} };
+  }
 }
 let state = loadState();
-function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function save() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch (e) {
+    toast("保存できませんでした(端末の容量不足の可能性があります)");
+  }
+}
 function dayKey(d) { return d.toISOString().slice(0, 10); }
 function todayKey() { return dayKey(new Date()); }
 function getDay(key) {
@@ -738,9 +784,14 @@ document.addEventListener("click", e => {
   if (e.target.id === "btnSettings") return switchTab("settings");
   if (e.target.id === "saveLogBtn") {
     const day = getDay(logDate);
-    const v = $("#stepsInput").value;
-    day.steps = v === "" ? null : Number(v);
-    day.notes = $("#notesInput").value;
+    const v = $("#stepsInput").value.trim();
+    if (v === "") day.steps = null;
+    else {
+      const n = Number(v);
+      if (!isFinite(n) || n < 0 || n > 200000) { toast("歩数は0〜200000で入力してください"); return; }
+      day.steps = Math.round(n);
+    }
+    day.notes = $("#notesInput").value.slice(0, 5000);
     save(); toast("保存しました"); return;
   }
   const fontBtn = e.target.closest("[data-font]");
@@ -760,12 +811,15 @@ document.addEventListener("click", e => {
       toast("リマインドOFF");
       return;
     }
-    if (!("Notification" in window) || !navigator.serviceWorker) {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       toast("このブラウザは通知に対応していません"); return;
     }
     Notification.requestPermission().then(p => {
       if (p !== "granted") { toast("通知が許可されませんでした"); return; }
-      navigator.serviceWorker.ready.then(reg => {
+      Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("sw-timeout")), 5000)),
+      ]).then(reg => {
         const done = () => {
           state.settings.remind = true; save(); renderSettings();
           reg.showNotification("足底腱膜炎ケア手帳", { body: "リマインドを設定しました", icon: "icons/icon-192.png" });
@@ -775,7 +829,7 @@ document.addEventListener("click", e => {
             .then(done)
             .catch(() => { done(); toast("定期通知の登録に失敗(ホーム画面追加済み?)"); });
         else { done(); toast("この環境はアプリ内通知のみ対応"); }
-      });
+      }).catch(() => toast("通知の準備ができません。ホーム画面に追加してから再度お試しください"));
     });
     return;
   }
@@ -805,15 +859,18 @@ document.addEventListener("click", e => {
   if (e.target.id === "importBtn") {
     const txt = prompt("バックアップした文字列を貼り付けてください:");
     if (txt) {
-      try { state = JSON.parse(txt); save(); renderers[activeTab](); toast("復元しました"); }
-      catch (err) { toast("データが読めませんでした"); }
+      try {
+        const parsed = normalizeState(JSON.parse(txt));
+        if (!parsed) { toast("データの形式が正しくありません"); return; }
+        state = parsed; save(); applyUi(); renderers[activeTab](); toast("復元しました");
+      } catch (err) { toast("データが読めませんでした"); }
     }
     return;
   }
   if (e.target.id === "wipeBtn") {
     if (confirm("本当に全データを削除しますか? 元に戻せません。")) {
-      state = { settings: { name: "", shoePresets: DEFAULT_SHOES.slice() }, days: {} };
-      save(); renderers[activeTab](); toast("削除しました");
+      state = { settings: defaultSettings(), days: {} };
+      save(); applyUi(); renderers[activeTab](); toast("削除しました");
     }
     return;
   }
@@ -832,6 +889,10 @@ document.addEventListener("click", e => {
 
 document.addEventListener("change", e => {
   if (e.target.id === "logDateInput") { logDate = e.target.value || todayKey(); renderLog(); }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#timerOverlay").classList.contains("hidden")) closeTimer();
 });
 
 /* ---------- init ---------- */

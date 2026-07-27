@@ -1,4 +1,4 @@
-const CACHE = "sokutei-care-v4";
+const CACHE = "sokutei-care-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,14 +19,15 @@ self.addEventListener("activate", e => {
     ).then(() => self.clients.claim())
   );
 });
+// ネットワーク優先・オフライン時のみキャッシュ(更新が確実に届くように)
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || !e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+    fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return res;
-    }))
+    }).catch(() => caches.match(e.request))
   );
 });
 
