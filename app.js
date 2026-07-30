@@ -100,14 +100,28 @@ function sanitizeDay(x) {
 }
 function normalizeState(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
-  const settings = (s.settings && typeof s.settings === "object" && !Array.isArray(s.settings)) ? s.settings : {};
+  if (!("settings" in s) && !("days" in s)) return null; // 形の違うJSONは拒否
+  const raw = (s.settings && typeof s.settings === "object" && !Array.isArray(s.settings)) ? s.settings : {};
+  const settings = { ...defaultSettings(), ...raw };
+  settings.name = typeof settings.name === "string" ? settings.name.slice(0, 100) : "";
+  settings.shoePresets = Array.isArray(settings.shoePresets)
+    ? settings.shoePresets.filter(t => typeof t === "string" && t.trim()).map(t => t.trim()).slice(0, 20)
+    : DEFAULT_SHOES.slice();
+  if (!settings.shoePresets.length) settings.shoePresets = DEFAULT_SHOES.slice();
+  if (!["normal", "large", "huge"].includes(settings.font)) settings.font = "normal";
+  settings.hc = !!settings.hc;
+  settings.simple = !!settings.simple;
+  settings.share = !!settings.share;
+  settings.remind = !!settings.remind;
+  settings.anonId = typeof settings.anonId === "string" ? settings.anonId.slice(0, 64) : null;
+  settings.lastTelemetry = typeof settings.lastTelemetry === "string" ? settings.lastTelemetry : null;
   const days = {};
   if (s.days && typeof s.days === "object" && !Array.isArray(s.days)) {
     for (const [k, v] of Object.entries(s.days)) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(k)) days[k] = sanitizeDay(v);
     }
   }
-  return { settings: { ...defaultSettings(), ...settings }, days };
+  return { settings, days };
 }
 function loadState() {
   try {
@@ -126,8 +140,10 @@ let state = loadState();
 function save() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(state));
+    return true;
   } catch (e) {
     toast("保存できませんでした(端末の容量不足の可能性があります)");
+    return false;
   }
 }
 function dayKey(d) { return d.toISOString().slice(0, 10); }
@@ -758,9 +774,9 @@ document.addEventListener("click", e => {
   if (pain) {
     const day = getDay(activeTab === "log" ? logDate : todayKey());
     day[pain.dataset.painName] = Number(pain.dataset.pain);
-    save();
+    const ok = save();
     renderers[activeTab]();
-    toast("記録しました");
+    if (ok) toast("記録しました");
     return;
   }
   const t = e.target.closest("[data-timer]");
@@ -792,7 +808,8 @@ document.addEventListener("click", e => {
       day.steps = Math.round(n);
     }
     day.notes = $("#notesInput").value.slice(0, 5000);
-    save(); toast("保存しました"); return;
+    if (save()) toast("保存しました");
+    return;
   }
   const fontBtn = e.target.closest("[data-font]");
   if (fontBtn) { state.settings.font = fontBtn.dataset.font; save(); applyUi(); renderSettings(); return; }
@@ -845,7 +862,8 @@ document.addEventListener("click", e => {
     state.settings.name = $("#nameInput").value.trim();
     state.settings.shoePresets = $("#shoesInput").value.split(/[,、]/).map(s => s.trim()).filter(Boolean);
     if (!state.settings.shoePresets.length) state.settings.shoePresets = DEFAULT_SHOES.slice();
-    save(); toast("保存しました"); return;
+    if (save()) toast("保存しました");
+    return;
   }
   if (e.target.id === "printBtn") return window.print();
   if (e.target.id === "copyReportBtn") {
@@ -862,7 +880,8 @@ document.addEventListener("click", e => {
       try {
         const parsed = normalizeState(JSON.parse(txt));
         if (!parsed) { toast("データの形式が正しくありません"); return; }
-        state = parsed; save(); applyUi(); renderers[activeTab](); toast("復元しました");
+        state = parsed;
+        if (save()) { applyUi(); renderers[activeTab](); toast("復元しました"); }
       } catch (err) { toast("データが読めませんでした"); }
     }
     return;
@@ -870,7 +889,7 @@ document.addEventListener("click", e => {
   if (e.target.id === "wipeBtn") {
     if (confirm("本当に全データを削除しますか? 元に戻せません。")) {
       state = { settings: defaultSettings(), days: {} };
-      save(); applyUi(); renderers[activeTab](); toast("削除しました");
+      if (save()) { applyUi(); renderers[activeTab](); toast("削除しました"); }
     }
     return;
   }
