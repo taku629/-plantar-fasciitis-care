@@ -73,7 +73,7 @@ const DEFAULT_SHOES = ["運動靴", "インソール付き靴", "革靴", "サ�
 
 /* ---------- state ---------- */
 function blankDay() {
-  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {} };
+  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [] };
 }
 function defaultSettings() {
   return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, anonId: null, lastTelemetry: null };
@@ -96,6 +96,12 @@ function sanitizeDay(x) {
         d.exercises[k] = Math.min(Math.max(Math.round(v), 0), 20);
     }
   }
+  d.weight = (typeof x.weight === "number" && isFinite(x.weight) && x.weight >= 20 && x.weight <= 300)
+    ? Math.round(x.weight * 10) / 10 : null;
+  d.meds = !!x.meds;
+  d.clinic = !!x.clinic;
+  d.photos = Array.isArray(x.photos)
+    ? x.photos.filter(p => typeof p === "string" && p.startsWith("data:image/")).slice(0, 4) : [];
   return d;
 }
 function normalizeState(s) {
@@ -289,10 +295,25 @@ function renderHome() {
   const tip = TIPS[new Date().getDate() % TIPS.length];
   const advice = generateAdvice();
 
+  // 継続バッジ
+  let streak = 0;
+  for (const k of recentDayKeys(365)) {
+    const dd = state.days[k];
+    if (dd && dd.morningPain !== null && dd.morningPain !== undefined) streak++; else break;
+  }
+  const wk7 = recentDayKeys(7);
+  const exDays7 = wk7.filter(k => state.days[k] && Object.keys(state.days[k].exercises).length > 0).length;
+  const latestWeight = [...recentDayKeys(60)].map(k => state.days[k]).find(d => d && d.weight);
+
   el.innerHTML = `
     <div class="card">
       <div class="big-date">${fmtJP(key)}</div>
       ${state.settings.name ? `<div class="muted">${esc(state.settings.name)}さんの記録</div>` : ""}
+      <div class="badge-row">
+        ${streak >= 3 ? `<span class="badge gold">記録 ${streak}日連続</span>` : ""}
+        ${exDays7 >= 3 ? `<span class="badge">今週 ${exDays7}日 体操</span>` : ""}
+        ${latestWeight ? `<span class="badge">体重 ${latestWeight.weight}kg</span>` : ""}
+      </div>
     </div>
 
     ${advice.length ? `<div class="card"><h2>あなたへの提案</h2>
@@ -356,6 +377,21 @@ async function fetchPubMedItems() {
     };
   });
 }
+const ARTICLE_TAGS = [
+  [/stretch|exercise|rehabilit|physical therapy/i, "ストレッチ・体操の研究"],
+  [/orthos|insole|footwear|shoe/i, "インソール・靴の研究"],
+  [/inject|corticosteroid|prp|platelet/i, "注射治療の研究"],
+  [/surg|fasciotom|operat/i, "手術の研究"],
+  [/shock.?wave|eswt|laser|ultrasound therapy/i, "機器治療の研究"],
+  [/meta.?analysis|systematic review|review/i, "複数研究のまとめ"],
+  [/risk factor|prevalence|epidemiol|associat/i, "原因・疫学の研究"],
+  [/mri|ultraso|radiograph|imaging|thickness/i, "画像検査の研究"],
+  [/taping|tape/i, "テーピングの研究"],
+];
+function articleTag(title) {
+  for (const [re, tag] of ARTICLE_TAGS) if (re.test(title)) return tag;
+  return "足底腱膜炎の研究";
+}
 function loadFeed() {
   if (feedLoaded) return;
   feedLoaded = true;
@@ -366,7 +402,7 @@ function loadFeed() {
       `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
         <div style="font-weight:700;font-size:.92rem">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(i.title)}</a>` : esc(i.title)}</div>
         <div class="muted">${esc(i.summary)}</div>
-        <div class="muted" style="font-size:.75rem">${esc(i.source)}</div>
+        <div class="muted" style="font-size:.75rem">${esc(i.source)}${i.kind === "research" || /pubmed/i.test(i.source) ? ` <span class="feed-tag">${articleTag(i.title)}</span>` : ""}</div>
       </div>`).join("") || `<p class="muted">情報を取得できませんでした</p>`;
   };
   const load = API_BASE
@@ -527,6 +563,19 @@ function renderLog() {
       <div class="chips">${STANDING_OPTS.map(o =>
         `<button class="chip${day.standing === o.id ? " on" : ""}" data-standing="${o.id}">${o.label}</button>`).join("")}
       </div>
+      <h3>体重(任意・kg)</h3>
+      <input type="number" id="weightInput" inputmode="decimal" step="0.1" value="${day.weight ?? ""}" placeholder="例: 65.5">
+      <h3>薬・通院</h3>
+      <div class="chips">
+        <button class="chip${day.meds ? " on" : ""}" data-flag="meds">薬を飲んだ</button>
+        <button class="chip${day.clinic ? " on" : ""}" data-flag="clinic">通院した</button>
+      </div>
+      <h3>足の写真(腫れ・見た目の記録)</h3>
+      <div class="photo-row">${(day.photos || []).map((p, i) =>
+        `<span class="photo-cell"><img src="${p}" alt="足の写真${i + 1}"><button class="photo-del" data-delphoto="${i}" aria-label="削除">×</button></span>`).join("")}
+      </div>
+      <input type="file" id="photoInput" accept="image/*" class="hidden">
+      <button class="btn" id="addPhotoBtn" ${(day.photos || []).length >= 4 ? "disabled" : ""}>写真を追加(1日4枚まで)</button>
       <h3>履いていたもの</h3>
       <div class="chips">${state.settings.shoePresets.map(s =>
         `<button class="chip${day.shoes.includes(s) ? " on" : ""}" data-shoe="${esc(s)}">${esc(s)}</button>`).join("")}
@@ -639,6 +688,10 @@ function renderReport() {
   const shoeCount = {};
   days.forEach(x => (x.d?.shoes || []).forEach(s => shoeCount[s] = (shoeCount[s] || 0) + 1));
   const notes = days.filter(x => x.d && x.d.notes.trim());
+  const weights = days.filter(x => x.d && x.d.weight !== null);
+  const medsDays = days.filter(x => x.d && x.d.meds).length;
+  const clinicDays = days.filter(x => x.d && x.d.clinic).length;
+  const photoCount = days.reduce((s, x) => s + (x.d?.photos?.length || 0), 0);
 
   el.innerHTML = `
     <div class="card">
@@ -657,6 +710,10 @@ function renderReport() {
         <tr><th>体操をした日</th><td>${exDays}日(計${exSets}セット)</td></tr>
         <tr><th>歩数の合計</th><td>${stepsSum ? stepsSum.toLocaleString() + "歩" : "—"}</td></tr>
         <tr><th>履物の内訳</th><td>${Object.entries(shoeCount).map(([s, c]) => `${esc(s)}×${c}日`).join("、") || "—"}</td></tr>
+        <tr><th>体重</th><td>${weights.length ? `最新 ${weights[weights.length - 1].d.weight}kg` + (weights.length > 1 ? ` (${weights[0].d.weight}kg → ${weights[weights.length - 1].d.weight}kg)` : "") : "—"}</td></tr>
+        <tr><th>服薬</th><td>${medsDays}日</td></tr>
+        <tr><th>通院</th><td>${clinicDays}日${clinicDays ? " (" + days.filter(x => x.d && x.d.clinic).map(x => fmtJP(x.k)).join("、") + ")" : ""}</td></tr>
+        ${photoCount ? `<tr><th>足の写真</th><td>${photoCount}枚(端末内保存)</td></tr>` : ""}
       </table>
       ${notes.length ? `<h3>メモ</h3>${notes.map(x => `<p class="muted">・${fmtJP(x.k)}: ${esc(x.d.notes)}</p>`).join("")}` : ""}
       <h3>日ごとの記録</h3>
@@ -690,7 +747,13 @@ function reportText() {
   let t = `【足底腱膜炎ケア手帳 週間レポート】${fmtJP(keys[0])}〜${fmtJP(keys[6])}\n`;
   t += `朝の痛み 平均:${mAvg}  体操実施:${exDays}日\n`;
   days.forEach(x => {
-    if (x.d) t += `${fmtJP(x.k)} 朝:${x.d.morningPain ?? "-"} 夜:${x.d.eveningPain ?? "-"} 歩数:${x.d.steps ?? "-"} 体操:${exercisesDoneCount(x.d)}/${EXERCISES.length}${x.d.notes ? " メモ:" + x.d.notes : ""}\n`;
+    if (x.d) {
+      t += `${fmtJP(x.k)} 朝:${x.d.morningPain ?? "-"} 夜:${x.d.eveningPain ?? "-"} 歩数:${x.d.steps ?? "-"} 体操:${exercisesDoneCount(x.d)}/${EXERCISES.length}`;
+      if (x.d.weight) t += ` 体重:${x.d.weight}kg`;
+      if (x.d.meds) t += " 服薬"; if (x.d.clinic) t += " 通院";
+      if (x.d.notes) t += " メモ:" + x.d.notes;
+      t += "\n";
+    }
   });
   return t;
 }
@@ -787,6 +850,19 @@ document.addEventListener("click", e => {
   if (step) { getDay(logDate).steps = Number(step.dataset.step); save(); renderLog(); return; }
   const st = e.target.closest("[data-standing]");
   if (st) { getDay(logDate).standing = st.dataset.standing; save(); renderLog(); return; }
+  const fl = e.target.closest("[data-flag]");
+  if (fl) {
+    const day = getDay(logDate);
+    day[fl.dataset.flag] = !day[fl.dataset.flag];
+    save(); renderLog(); return;
+  }
+  if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
+  const dp = e.target.closest("[data-delphoto]");
+  if (dp) {
+    const day = getDay(logDate);
+    day.photos.splice(Number(dp.dataset.delphoto), 1);
+    save(); renderLog(); return;
+  }
   const sh = e.target.closest("[data-shoe]");
   if (sh) {
     const day = getDay(logDate), s = sh.dataset.shoe, i = day.shoes.indexOf(s);
@@ -806,6 +882,13 @@ document.addEventListener("click", e => {
       const n = Number(v);
       if (!isFinite(n) || n < 0 || n > 200000) { toast("歩数は0〜200000で入力してください"); return; }
       day.steps = Math.round(n);
+    }
+    const wv = $("#weightInput") ? $("#weightInput").value.trim() : "";
+    if (wv === "") day.weight = null;
+    else {
+      const w = Number(wv);
+      if (!isFinite(w) || w < 20 || w > 300) { toast("体重は20〜300kgで入力してください"); return; }
+      day.weight = Math.round(w * 10) / 10;
     }
     day.notes = $("#notesInput").value.slice(0, 5000);
     if (save()) toast("保存しました");
@@ -908,7 +991,32 @@ document.addEventListener("click", e => {
 
 document.addEventListener("change", e => {
   if (e.target.id === "logDateInput") { logDate = e.target.value || todayKey(); renderLog(); }
+  if (e.target.id === "photoInput" && e.target.files && e.target.files[0]) addPhoto(e.target.files[0]);
 });
+
+function addPhoto(file) {
+  if (!file.type.startsWith("image/")) { toast("画像ファイルを選んでください"); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement("canvas");
+      const s = Math.min(1, 640 / Math.max(img.width, img.height));
+      cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      const url = cv.toDataURL("image/jpeg", 0.75);
+      const day = getDay(logDate);
+      if (!Array.isArray(day.photos)) day.photos = [];
+      if (day.photos.length >= 4) { toast("1日4枚までです"); return; }
+      day.photos.push(url);
+      if (save()) { renderLog(); toast("写真を保存しました"); }
+      else day.photos.pop();
+    };
+    img.onerror = () => toast("画像を読み込めませんでした");
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#timerOverlay").classList.contains("hidden")) closeTimer();
