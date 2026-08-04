@@ -76,7 +76,7 @@ function blankDay() {
   return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [] };
 }
 function defaultSettings() {
-  return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, anonId: null, lastTelemetry: null };
+  return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, hideWeight: true, anonId: null, lastTelemetry: null };
 }
 function clampPain(v) {
   return (typeof v === "number" && isFinite(v)) ? Math.min(Math.max(Math.round(v), 0), 10) : null;
@@ -119,6 +119,7 @@ function normalizeState(s) {
   settings.simple = !!settings.simple;
   settings.share = !!settings.share;
   settings.remind = !!settings.remind;
+  settings.hideWeight = "hideWeight" in settings ? !!settings.hideWeight : true;
   settings.anonId = typeof settings.anonId === "string" ? settings.anonId.slice(0, 64) : null;
   settings.lastTelemetry = typeof settings.lastTelemetry === "string" ? settings.lastTelemetry : null;
   const days = {};
@@ -312,7 +313,7 @@ function renderHome() {
       <div class="badge-row">
         ${streak >= 3 ? `<span class="badge gold">記録 ${streak}日連続</span>` : ""}
         ${exDays7 >= 3 ? `<span class="badge">今週 ${exDays7}日 体操</span>` : ""}
-        ${latestWeight ? `<span class="badge">体重 ${latestWeight.weight}kg</span>` : ""}
+        ${latestWeight && !state.settings.hideWeight ? `<span class="badge">体重 ${latestWeight.weight}kg</span>` : ""}
       </div>
     </div>
 
@@ -565,6 +566,7 @@ function renderLog() {
       </div>
       <h3>体重(任意・kg)</h3>
       <input type="number" id="weightInput" inputmode="decimal" step="0.1" value="${day.weight ?? ""}" placeholder="例: 65.5">
+      <div class="muted" style="font-size:.78rem">この端末にのみ保存されます。誰にも送信されません。</div>
       <h3>薬・通院</h3>
       <div class="chips">
         <button class="chip${day.meds ? " on" : ""}" data-flag="meds">薬を飲んだ</button>
@@ -576,6 +578,7 @@ function renderLog() {
       </div>
       <input type="file" id="photoInput" accept="image/*" class="hidden">
       <button class="btn" id="addPhotoBtn" ${(day.photos || []).length >= 4 ? "disabled" : ""}>写真を追加(1日4枚まで)</button>
+      <div class="muted" style="font-size:.78rem">写真もこの端末にのみ保存されます。</div>
       <h3>履いていたもの</h3>
       <div class="chips">${state.settings.shoePresets.map(s =>
         `<button class="chip${day.shoes.includes(s) ? " on" : ""}" data-shoe="${esc(s)}">${esc(s)}</button>`).join("")}
@@ -776,6 +779,11 @@ function renderSettings() {
         <button class="chip${state.settings.simple ? " on" : ""}" id="simpleToggle">${state.settings.simple ? "シンプルモード ON" : "シンプルモード OFF"}</button>
       </div>
       <p class="muted" style="margin-top:8px">シンプルモード: 「ホーム」と「体操」だけに絞った表示にします。</p>
+      <h3>プライバシー</h3>
+      <button class="chip${state.settings.hideWeight ? " on" : ""}" id="hideWeightToggle">
+        ${state.settings.hideWeight ? "体重は画面に出さない ON" : "体重は画面に出さない OFF"}
+      </button>
+      <p class="muted" style="margin-top:6px">ONにするとホームに体重バッジが出なくなります(体重・写真はどちらも端末内のみ保存で、誰にも送信されません)。</p>
     </div>
     <div class="card">
       <h2>リマインド通知</h2>
@@ -897,6 +905,7 @@ document.addEventListener("click", e => {
   const fontBtn = e.target.closest("[data-font]");
   if (fontBtn) { state.settings.font = fontBtn.dataset.font; save(); applyUi(); renderSettings(); return; }
   if (e.target.id === "hcToggle") { state.settings.hc = !state.settings.hc; save(); applyUi(); renderSettings(); return; }
+  if (e.target.id === "hideWeightToggle") { state.settings.hideWeight = !state.settings.hideWeight; save(); renderSettings(); return; }
   if (e.target.id === "simpleToggle") {
     state.settings.simple = !state.settings.simple;
     save(); applyUi(); renderSettings();
