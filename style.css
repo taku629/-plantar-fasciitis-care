@@ -83,7 +83,20 @@ main { max-width: 640px; margin: 0 auto; padding: 12px 12px 24px; }
 .ex-name { font-weight: 700; font-size: 1.02rem; }
 .ex-sets { font-size: .85rem; color: var(--accent); font-weight: 700; white-space: nowrap; }
 .ex-desc { font-size: .9rem; margin: 6px 0; }
-.ex-art svg { width: 100%; max-width: 340px; display: block; margin: 8px auto; background: #FAFDFB; border: 1px solid var(--line); border-radius: 12px; }
+.ex-art { position: relative; margin: 8px auto; max-width: 340px; }
+.ex-art img { width: 100%; display: block; border-radius: 12px; border: 1px solid var(--line); }
+.ex-motion { position: absolute; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; background: rgba(255,255,252,.94); border-radius: 999px; padding: 5px 12px 5px 8px; font-size: .75rem; font-weight: 700; color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+.ex-motion svg { width: 22px; height: 22px; }
+.ex-motion .dir-up    { animation: mUp 1.7s ease-in-out infinite; }
+.ex-motion .dir-down  { animation: mDown 1.7s ease-in-out infinite; }
+.ex-motion .dir-right { animation: mRight 1.7s ease-in-out infinite; }
+.ex-motion .dir-left  { animation: mLeft 1.7s ease-in-out infinite; }
+.ex-motion .dir-both  { animation: mBoth 1.7s ease-in-out infinite; }
+@keyframes mUp    { 0%,100% { transform: translateY(2px); opacity:.55 } 50% { transform: translateY(-3px); opacity:1 } }
+@keyframes mDown  { 0%,100% { transform: translateY(-2px); opacity:.55 } 50% { transform: translateY(3px); opacity:1 } }
+@keyframes mRight { 0%,100% { transform: translateX(-2px); opacity:.55 } 50% { transform: translateX(4px); opacity:1 } }
+@keyframes mLeft  { 0%,100% { transform: translateX(2px); opacity:.55 } 50% { transform: translateX(-4px); opacity:1 } }
+@keyframes mBoth  { 0%,100% { transform: translateX(-3px); opacity:.55 } 50% { transform: translateX(3px); opacity:1 } }
 .ex-tip { font-size: .8rem; color: var(--ink-soft); background: var(--bg); border-radius: 8px; padding: 6px 10px; margin-top: 6px; }
 .ex-actions { display: flex; gap: 8px; margin-top: 8px; }
 .ex-actions .btn { padding: 10px 14px; font-size: .9rem; }

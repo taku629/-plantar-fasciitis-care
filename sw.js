@@ -5,6 +5,8 @@ const ASSETS = [
   "./style.css",
   "./app.js",
   "./manifest.webmanifest",
+  "./art/fascia.jpg", "./art/gastroc.jpg", "./art/soleus.jpg",
+  "./art/towel.jpg", "./art/heelraise.jpg", "./art/ice.jpg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];

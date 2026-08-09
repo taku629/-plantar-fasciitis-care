@@ -451,108 +451,28 @@ function sendTelemetry() {
 
 /* ---------- EXERCISE ---------- */
 const EX_ART = {
-  fascia: `<svg viewBox="0 0 240 110" role="img" aria-label="足の指を反らす">
-    <line x1="15" y1="98" x2="225" y2="98" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <rect x="66" y="10" width="24" height="64" rx="11" fill="#DCEEE6"/>
-    <rect x="66" y="74" width="96" height="24" rx="12" fill="#BFE0D2"/>
-    <g>
-      <animateTransform attributeName="transform" type="rotate" values="0 160 96;-32 160 96;0 160 96" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite"/>
-      <rect x="160" y="74" width="36" height="22" rx="10" fill="#8CC7AC"/>
-      <circle cx="184" cy="85" r="7" fill="#5FA98D"/>
-    </g>
-    <path d="M186 66 Q212 50 210 80" fill="none" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrFas)"/>
-    <circle cx="204" cy="46" r="9" fill="#F2C9A0"/>
-    <defs><marker id="arrFas" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker></defs>
-  </svg>`,
-  gastroc: `<svg viewBox="0 0 240 110" role="img" aria-label="壁に向かって膝を伸ばして押す">
-    <line x1="15" y1="102" x2="225" y2="102" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <line x1="210" y1="8" x2="210" y2="102" stroke="#B9CFC4" stroke-width="6" stroke-linecap="round"/>
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0 0;7 0;0 0" dur="2.6s" repeatCount="indefinite"/>
-      <circle cx="150" cy="18" r="10" fill="#F2C9A0"/>
-      <path d="M146 27 L138 47" stroke="#8CC7AC" stroke-width="12" stroke-linecap="round"/>
-      <path d="M142 38 L206 36" stroke="#F2C9A0" stroke-width="7" stroke-linecap="round"/>
-      <path d="M144 44 L206 48" stroke="#F2C9A0" stroke-width="7" stroke-linecap="round"/>
-      <path d="M138 47 L100 98" stroke="#5FA98D" stroke-width="8" stroke-linecap="round"/>
-      <path d="M100 98 L114 98" stroke="#5FA98D" stroke-width="8" stroke-linecap="round"/>
-      <path d="M138 47 L161 70 L161 98" stroke="#8CC7AC" stroke-width="8" stroke-linecap="round" fill="none"/>
-      <path d="M161 98 L175 98" stroke="#8CC7AC" stroke-width="8" stroke-linecap="round"/>
-    </g>
-    <path d="M158 62 L190 62" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrGas)"/>
-    <defs><marker id="arrGas" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker></defs>
-    <text x="30" y="30" font-size="11" fill="#5FA98D" font-weight="700">後ろ足の膝は伸ばす</text>
-  </svg>`,
-  soleus: `<svg viewBox="0 0 240 110" role="img" aria-label="後ろ足の膝を曲げて沈む">
-    <line x1="15" y1="102" x2="225" y2="102" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <line x1="210" y1="8" x2="210" y2="102" stroke="#B9CFC4" stroke-width="6" stroke-linecap="round"/>
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0 0;5 5;0 0" dur="2.6s" repeatCount="indefinite"/>
-      <circle cx="150" cy="18" r="10" fill="#F2C9A0"/>
-      <path d="M146 27 L138 47" stroke="#8CC7AC" stroke-width="12" stroke-linecap="round"/>
-      <path d="M142 38 L206 36" stroke="#F2C9A0" stroke-width="7" stroke-linecap="round"/>
-      <path d="M144 44 L206 48" stroke="#F2C9A0" stroke-width="7" stroke-linecap="round"/>
-      <path d="M138 47 L120 70 L102 98" stroke="#5FA98D" stroke-width="8" stroke-linecap="round" fill="none"/>
-      <circle cx="120" cy="70" r="5" fill="#5FA98D"/>
-      <path d="M102 98 L116 98" stroke="#5FA98D" stroke-width="8" stroke-linecap="round"/>
-      <path d="M138 47 L161 70 L161 98" stroke="#8CC7AC" stroke-width="8" stroke-linecap="round" fill="none"/>
-      <path d="M161 98 L175 98" stroke="#8CC7AC" stroke-width="8" stroke-linecap="round"/>
-    </g>
-    <path d="M126 56 Q112 62 112 76" fill="none" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrSol)"/>
-    <defs><marker id="arrSol" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker></defs>
-    <text x="30" y="30" font-size="11" fill="#5FA98D" font-weight="700">後ろ足の膝は曲げる</text>
-  </svg>`,
-  towel: `<svg viewBox="0 0 240 110" role="img" aria-label="タオルを足指でたぐり寄せる">
-    <line x1="15" y1="100" x2="225" y2="100" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <rect x="40" y="92" width="175" height="10" rx="4" fill="#F0D9B5"/>
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0 0;-14 0;0 0" dur="2.2s" repeatCount="indefinite"/>
-      <rect x="168" y="90" width="47" height="12" rx="4" fill="#E8C78F"/>
-      <path d="M174 90 v12 M184 90 v12 M194 90 v12 M204 90 v12" stroke="#D9B275" stroke-width="2"/>
-    </g>
-    <rect x="60" y="56" width="92" height="24" rx="12" fill="#BFE0D2"/>
-    <rect x="72" y="22" width="24" height="40" rx="11" fill="#DCEEE6"/>
-    <g>
-      <animateTransform attributeName="transform" type="rotate" values="0 152 90;24 152 90;0 152 90" dur="2.2s" repeatCount="indefinite"/>
-      <rect x="150" y="80" width="14" height="14" rx="6" fill="#8CC7AC"/>
-      <rect x="156" y="84" width="12" height="12" rx="6" fill="#5FA98D"/>
-    </g>
-    <path d="M206 78 L182 78" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrTow)"/>
-    <defs><marker id="arrTow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker></defs>
-  </svg>`,
-  heelraise: `<svg viewBox="0 0 240 110" role="img" aria-label="かかとを上げ下げする">
-    <line x1="15" y1="100" x2="225" y2="100" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <g>
-      <animateTransform attributeName="transform" type="rotate" values="0 172 96;-17 172 96;0 172 96" keyTimes="0;0.5;1" dur="2.2s" repeatCount="indefinite"/>
-      <rect x="62" y="72" width="110" height="24" rx="12" fill="#BFE0D2"/>
-      <rect x="66" y="12" width="24" height="64" rx="11" fill="#DCEEE6"/>
-    </g>
-    <path d="M172 96 m-6 -4 a10 10 0 0 1 12 8" stroke="#5FA98D" stroke-width="5" fill="#BFE0D2"/>
-    <path d="M70 66 Q62 50 74 42" fill="none" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrHeel)"/>
-    <defs><marker id="arrHeel" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker></defs>
-    <text x="30" y="30" font-size="11" fill="#5FA98D" font-weight="700">かかとを上げる↕</text>
-  </svg>`,
-  ice: `<svg viewBox="0 0 240 110" role="img" aria-label="ボトルを足裏でころころ">
-    <line x1="15" y1="104" x2="225" y2="104" stroke="#C9DDD3" stroke-width="3" stroke-linecap="round"/>
-    <rect x="64" y="50" width="104" height="24" rx="12" fill="#BFE0D2"/>
-    <rect x="74" y="12" width="24" height="42" rx="11" fill="#DCEEE6"/>
-    <g>
-      <animateTransform attributeName="transform" type="translate" values="0 0;70 0;0 0" dur="3s" repeatCount="indefinite"/>
-      <circle cx="84" cy="90" r="13" fill="#9CC4E8" stroke="#6FA3D8" stroke-width="2"/>
-      <circle cx="84" cy="90" r="4" fill="#6FA3D8">
-        <animateTransform attributeName="transform" type="rotate" values="0 84 90;-290 84 90;0 84 90" dur="3s" repeatCount="indefinite" additive="sum"/>
-      </circle>
-      <path d="M84 90 L84 79" stroke="#6FA3D8" stroke-width="2">
-        <animateTransform attributeName="transform" type="rotate" values="0 84 90;-290 84 90;0 84 90" dur="3s" repeatCount="indefinite"/>
-      </path>
-    </g>
-    <path d="M178 44 L146 44" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrIce)"/>
-    <path d="M58 44 L90 44" stroke="#E8845B" stroke-width="4" stroke-linecap="round" marker-end="url(#arrIce2)"/>
-    <defs>
-      <marker id="arrIce" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker>
-      <marker id="arrIce2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E8845B"/></marker>
-    </defs>
-  </svg>`,
+  fascia:   { img: "art/fascia.jpg",   dir: "up",    hint: "つま先を手前に反らす" },
+  gastroc:  { img: "art/gastroc.jpg",  dir: "right", hint: "体を壁へゆっくり寄せる" },
+  soleus:   { img: "art/soleus.jpg",   dir: "down",  hint: "後ろ足の膝を曲げて沈む" },
+  towel:    { img: "art/towel.jpg",    dir: "left",  hint: "タオルを指でたぐり寄せる" },
+  heelraise:{ img: "art/heelraise.jpg",dir: "up",    hint: "かかとを上げて下げる" },
+  ice:      { img: "art/ice.jpg",      dir: "both",  hint: "足の裏で前後にころころ" },
 };
+const MOTION_ARROWS = {
+  up:    '<path d="M12 22 V6" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M5 11 L12 4 L19 11" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  down:  '<path d="M12 2 V18" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M5 13 L12 20 L19 13" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  right: '<path d="M2 12 H18" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M13 5 L20 12 L13 19" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  left:  '<path d="M22 12 H6" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M11 5 L4 12 L11 19" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  both:  '<path d="M3 12 H12" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M9 8 L4 12 L9 16" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12 H21" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M15 8 L20 12 L15 16" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+};
+function exArt(id) {
+  const a = EX_ART[id];
+  if (!a) return "";
+  return `<div class="ex-art">
+    <img src="${a.img}" alt="${a.hint}のイラスト" loading="lazy">
+    <div class="ex-motion"><svg viewBox="0 0 24 24" class="dir-${a.dir}" stroke="#E8845B">${MOTION_ARROWS[a.dir]}</svg><span>${a.hint}</span></div>
+  </div>`;
+}
 
 let timer = { id: null, exId: null, remain: 0, running: false };
 
@@ -570,7 +490,7 @@ function renderExercises() {
           <span class="ex-name">${ex.name}</span>
           <span class="ex-sets">${ex.perSet} × ${ex.sets}セット</span>
         </div>
-        <div class="ex-art">${EX_ART[ex.id] || ""}</div>
+        ${exArt(ex.id)}
         <div class="ex-desc">${ex.desc}</div>
         <div class="ex-tip">${ex.tip}</div>
         <div class="ex-actions">
@@ -1143,7 +1063,8 @@ if (qp.get("hc") === "1") state.settings.hc = true;
 if (qp.get("simple") === "1") state.settings.simple = true;
 save();
 applyUi();
-switchTab("home");
+const tabParam = qp.get("tab");
+switchTab(tabParam && renderers[tabParam] && !(state.settings.simple && ["log", "chart", "report"].includes(tabParam)) ? tabParam : "home");
 sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
