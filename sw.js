@@ -5,8 +5,9 @@ const ASSETS = [
   "./style.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./art/fascia.jpg", "./art/gastroc.jpg", "./art/soleus.jpg",
-  "./art/towel.jpg", "./art/heelraise.jpg", "./art/ice.jpg",
+  "./art/fascia.jpg", "./art/fascia-b.jpg", "./art/gastroc.jpg", "./art/gastroc-b.jpg",
+  "./art/soleus.jpg", "./art/soleus-b.jpg", "./art/towel.jpg", "./art/towel-b.jpg",
+  "./art/heelraise.jpg", "./art/heelraise-b.jpg", "./art/ice.jpg", "./art/ice-b.jpg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];

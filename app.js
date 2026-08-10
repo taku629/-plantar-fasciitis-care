@@ -468,12 +468,15 @@ const MOTION_ARROWS = {
 function exArt(id) {
   const a = EX_ART[id];
   if (!a) return "";
+  const imgB = a.img.replace(".jpg", "-b.jpg");
   return `<div class="ex-art">
     <img src="${a.img}" alt="${a.hint}のイラスト" loading="lazy">
+    <img class="frame-b" src="${imgB}" alt="" loading="lazy" aria-hidden="true">
     <div class="ex-motion"><svg viewBox="0 0 24 24" class="dir-${a.dir}" stroke="#E8845B">${MOTION_ARROWS[a.dir]}</svg><span>${a.hint}</span></div>
   </div>`;
 }
 
+const openEx = new Set();
 let timer = { id: null, exId: null, remain: 0, running: false };
 
 function renderExercises() {
@@ -485,11 +488,11 @@ function renderExercises() {
     ${EXERCISES.map(ex => {
       const c = day.exercises[ex.id] || 0;
       const done = c >= ex.sets;
-      return `<div class="ex-item${done ? " done" : ""}">
-        <div class="ex-head">
-          <span class="ex-name">${ex.name}</span>
-          <span class="ex-sets">${ex.perSet} × ${ex.sets}セット</span>
-        </div>
+      return `<details class="ex-item${done ? " done" : ""}" data-exid="${ex.id}"${openEx.has(ex.id) ? " open" : ""}>
+        <summary class="ex-head">
+          <span class="ex-name">${done ? "✔ " : ""}${ex.name}</span>
+          <span class="ex-sets">${c}/${ex.sets}セット${done ? " 完了" : ""}</span>
+        </summary>
         ${exArt(ex.id)}
         <div class="ex-desc">${ex.desc}</div>
         <div class="ex-tip">${ex.tip}</div>
@@ -499,7 +502,7 @@ function renderExercises() {
             ${done ? "完了 ✔" : `1セット完了(${c}/${ex.sets})`}
           </button>
         </div>
-      </div>`;
+      </details>`;
     }).join("")}`;
 }
 
@@ -1022,6 +1025,11 @@ document.addEventListener("click", e => {
   }
   if (e.target.id === "timerClose") return closeTimer();
 });
+
+document.addEventListener("toggle", e => {
+  const d = e.target.closest("details.ex-item[data-exid]");
+  if (d) { d.open ? openEx.add(d.dataset.exid) : openEx.delete(d.dataset.exid); }
+}, true);
 
 document.addEventListener("change", e => {
   if (e.target.id === "logDateInput") { logDate = e.target.value || todayKey(); renderLog(); }
