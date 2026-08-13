@@ -192,6 +192,10 @@ body.simple .adv-hide { display: none !important; }
 .photo-del { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; background: var(--warn); color: #fff; border: none; font-size: 14px; line-height: 1; cursor: pointer; }
 .feed-tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 8px; font-size: .72rem; font-weight: 700; margin-top: 2px; }
 .tip-card { background: #FDF3E3; border-radius: var(--radius); padding: 14px; font-size: .88rem; border-left: 4px solid #E8B04B; }
+.item-links { display: flex; gap: 8px; margin-top: 10px; }
+.item-link { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px; border: 1.5px solid var(--accent); border-radius: 10px; color: var(--accent); background: #fff; font-weight: 700; font-size: .88rem; text-decoration: none; }
+.item-link:active { transform: scale(.97); }
+body.hc .item-link { border-color: #444; color: #000; }
 
 @media print {
   .bottom-nav, .app-header, .no-print, .toast, .overlay { display: none !important; }
