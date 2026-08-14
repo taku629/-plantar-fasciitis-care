@@ -104,6 +104,21 @@ function sanitizeDay(x) {
     ? x.photos.filter(p => typeof p === "string" && p.startsWith("data:image/")).slice(0, 4) : [];
   return d;
 }
+function sanitizeHospital(h) {
+  if (!h || typeof h !== "object" || Array.isArray(h)) return null;
+  const name = typeof h.name === "string" ? h.name.trim().slice(0, 60) : "";
+  if (!name) return null;
+  return {
+    id: typeof h.id === "string" && h.id ? h.id.slice(0, 40) : "h" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    name,
+    rating: Number.isInteger(h.rating) && h.rating >= 1 && h.rating <= 5 ? h.rating : 3,
+    cost: typeof h.cost === "string" ? h.cost.slice(0, 60) : "",
+    phone: typeof h.phone === "string" ? h.phone.replace(/[^\d+()\-\s]/g, "").slice(0, 20) : "",
+    url: typeof h.url === "string" && /^https?:\/\//.test(h.url) ? h.url.slice(0, 300) : "",
+    memo: typeof h.memo === "string" ? h.memo.slice(0, 200) : "",
+    lastVisit: typeof h.lastVisit === "string" && /^\d{4}-\d{2}-\d{2}$/.test(h.lastVisit) ? h.lastVisit : null,
+  };
+}
 function normalizeState(s) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   if (!("settings" in s) && !("days" in s)) return null; // 形の違うJSONは拒否
@@ -128,19 +143,21 @@ function normalizeState(s) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(k)) days[k] = sanitizeDay(v);
     }
   }
-  return { settings, days };
+  const hospitals = Array.isArray(s.hospitals)
+    ? s.hospitals.map(sanitizeHospital).filter(Boolean).slice(0, 50) : [];
+  return { settings, days, hospitals };
 }
 function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { settings: defaultSettings(), days: {} };
+    if (!raw) return { settings: defaultSettings(), days: {}, hospitals: [] };
     const s = normalizeState(JSON.parse(raw));
     if (s) return s;
     localStorage.removeItem(LS_KEY); // 形が違うデータは破棄して復旧
-    return { settings: defaultSettings(), days: {} };
+    return { settings: defaultSettings(), days: {}, hospitals: [] };
   } catch (e) {
     try { localStorage.removeItem(LS_KEY); } catch (e2) { /* ignore */ }
-    return { settings: defaultSettings(), days: {} };
+    return { settings: defaultSettings(), days: {}, hospitals: [] };
   }
 }
 let state = loadState();
@@ -397,11 +414,38 @@ function renderHome() {
       <p class="muted" style="font-size:.72rem;margin-top:8px">購入は任意です。効果には個人差があります。</p>
     </div>`; })()}
 
+    <div class="card">
+      <h2>かかりつけ・病院メモ</h2>
+      <div class="item-links" style="margin-top:0;margin-bottom:10px">
+        <a class="item-link" href="https://www.google.com/maps/search/${encodeURIComponent("整形外科 足底腱膜炎")}" target="_blank" rel="noopener">地図で近くの整形外科</a>
+        <a class="item-link" href="https://www.google.com/maps/search/${encodeURIComponent("リハビリ科 足底腱膜炎")}" target="_blank" rel="noopener">リハビリ科を探す</a>
+      </div>
+      ${state.hospitals.length
+        ? state.hospitals.slice().sort((a, b) => b.rating - a.rating).map(hospRow).join("")
+        : `<p class="muted">行ったことのある病院を登録すると、評価・費用・予約リンクがここに並びます。</p>`}
+      <details class="ex-item">
+        <summary><span style="font-weight:700">病院を追加する</span></summary>
+        <div style="padding:0 14px 14px">
+          <label class="field"><span>病院名</span><input type="text" id="hospName" maxlength="60" placeholder="例: ○○整形外科"></label>
+          <label class="field"><span>評価(タップで選ぶ)</span></label>
+          <div class="hosp-stars" id="hospStars">
+            ${[1,2,3,4,5].map(i => `<button type="button" class="hosp-star" data-hstar="${i}">★</button>`).join("")}
+          </div>
+          <label class="field" style="margin-top:10px"><span>費用メモ(例: 初診3,500円)</span><input type="text" id="hospCost" maxlength="60"></label>
+          <label class="field"><span>電話番号</span><input type="text" id="hospPhone" maxlength="20" inputmode="tel"></label>
+          <label class="field"><span>予約・サイトのURL</span><input type="text" id="hospUrl" maxlength="300" inputmode="url" placeholder="https://"></label>
+          <label class="field"><span>メモ</span><input type="text" id="hospMemo" maxlength="200"></label>
+          <button class="btn btn-primary" id="addHospBtn" style="width:100%">追加する</button>
+        </div>
+      </details>
+    </div>
+
     <div class="card" id="feedCard">
       <h2>足底腱膜炎の最新情報</h2>
       <p class="muted" id="feedBody">読み込み中…</p>
     </div>
     <div class="card" id="insightsCard"></div>`;
+  updateHospStars();
   if (!state.settings.simple) loadFeed();
 }
 
@@ -443,6 +487,30 @@ const ARTICLE_TAGS = [
 function articleTag(title) {
   for (const [re, tag] of ARTICLE_TAGS) if (re.test(title)) return tag;
   return "足底腱膜炎の研究";
+}
+let hospRating = 3;
+function hospRow(h) {
+  return `<div class="hosp-item">
+    <div class="ex-head">
+      <span style="font-weight:700">${esc(h.name)}</span>
+      <span class="hosp-rate">${"★".repeat(h.rating)}<span class="hosp-rate-off">${"★".repeat(5 - h.rating)}</span></span>
+    </div>
+    <div class="muted" style="font-size:.82rem;margin-top:2px">
+      ${h.cost ? `費用: ${esc(h.cost)}　` : ""}${h.lastVisit ? `最終受診: ${h.lastVisit.slice(5).replace("-", "/")}　` : ""}${h.memo ? esc(h.memo) : ""}
+    </div>
+    <div class="hosp-actions">
+      <a class="hosp-action" href="https://www.google.com/maps/search/${encodeURIComponent(h.name)}" target="_blank" rel="noopener">地図</a>
+      ${h.phone ? `<a class="hosp-action" href="tel:${h.phone}">電話</a>` : ""}
+      ${h.url ? `<a class="hosp-action" href="${esc(h.url)}" target="_blank" rel="noopener">予約/サイト</a>` : ""}
+      <button type="button" class="hosp-action" data-hvisit="${esc(h.id)}">今日行った</button>
+      <button type="button" class="hosp-action del" data-hdel="${esc(h.id)}">削除</button>
+    </div>
+  </div>`;
+}
+function updateHospStars() {
+  document.querySelectorAll("#hospStars .hosp-star").forEach(b => {
+    b.classList.toggle("on", Number(b.dataset.hstar) <= hospRating);
+  });
 }
 function loadFeed() {
   if (feedLoaded) return;
@@ -942,6 +1010,38 @@ document.addEventListener("click", e => {
     const day = getDay(logDate);
     day[fl.dataset.flag] = !day[fl.dataset.flag];
     save(); renderLog(); return;
+  }
+  const hs = e.target.closest("[data-hstar]");
+  if (hs) { hospRating = Number(hs.dataset.hstar); updateHospStars(); return; }
+  if (e.target.id === "addHospBtn") {
+    const h = sanitizeHospital({
+      name: $("#hospName").value,
+      rating: hospRating,
+      cost: $("#hospCost").value,
+      phone: $("#hospPhone").value,
+      url: $("#hospUrl").value,
+      memo: $("#hospMemo").value,
+    });
+    if (!h) { toast("病院名を入力してください"); return; }
+    state.hospitals.push(h);
+    if (save()) { hospRating = 3; renderHome(); toast("病院を登録しました"); }
+    return;
+  }
+  const hv = e.target.closest("[data-hvisit]");
+  if (hv) {
+    const h = state.hospitals.find(x => x.id === hv.dataset.hvisit);
+    if (h) {
+      h.lastVisit = todayKey();
+      getDay(todayKey()).clinic = true;
+      if (save()) { renderHome(); toast(`${h.name} の受診を記録しました`); }
+    }
+    return;
+  }
+  const hd = e.target.closest("[data-hdel]");
+  if (hd) {
+    const i = state.hospitals.findIndex(x => x.id === hd.dataset.hdel);
+    if (i >= 0) { state.hospitals.splice(i, 1); save(); renderHome(); }
+    return;
   }
   if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
   const dp = e.target.closest("[data-delphoto]");

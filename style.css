@@ -192,6 +192,16 @@ body.simple .adv-hide { display: none !important; }
 .photo-del { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; background: var(--warn); color: #fff; border: none; font-size: 14px; line-height: 1; cursor: pointer; }
 .feed-tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 8px; font-size: .72rem; font-weight: 700; margin-top: 2px; }
 .tip-card { background: #FDF3E3; border-radius: var(--radius); padding: 14px; font-size: .88rem; border-left: 4px solid #E8B04B; }
+.hosp-item { border-top: 1.5px solid var(--line); padding: 10px 0; }
+.hosp-rate { color: #E8A020; font-size: 1rem; letter-spacing: 1px; }
+.hosp-rate-off { color: var(--line); }
+.hosp-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.hosp-action { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 6px 14px; border: 1.5px solid var(--accent); border-radius: 999px; color: var(--accent); background: #fff; font-weight: 700; font-size: .82rem; text-decoration: none; cursor: pointer; font-family: inherit; }
+.hosp-action.del { border-color: var(--line); color: var(--ink-soft); }
+.hosp-action:active { transform: scale(.96); }
+.hosp-stars { display: flex; gap: 4px; }
+.hosp-star { font-size: 2rem; color: var(--line); background: none; border: none; cursor: pointer; padding: 4px; line-height: 1; min-width: 48px; min-height: 48px; }
+.hosp-star.on { color: #E8A020; }
 .item-links { display: flex; gap: 8px; margin-top: 10px; }
 .item-link { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px; border: 1.5px solid var(--accent); border-radius: 10px; color: var(--accent); background: #fff; font-weight: 700; font-size: .88rem; text-decoration: none; }
 .item-link:active { transform: scale(.97); }
