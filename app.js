@@ -408,8 +408,10 @@ function renderHome() {
       <div style="font-weight:700">${esc(it.name)} <span class="feed-tag">${esc(it.cat)}</span></div>
       <p class="muted">${esc(it.desc)}</p>
       <div class="item-links">
-        <a class="item-link" href="https://www.amazon.co.jp/s?k=${encodeURIComponent(it.kw)}" target="_blank" rel="noopener">Amazonで探す</a>
-        <a class="item-link" href="https://search.rakuten.co.jp/search/mall/${encodeURIComponent(it.kw)}/" target="_blank" rel="noopener">楽天で探す</a>
+        <a class="item-link" href="https://www.amazon.co.jp/s?k=${encodeURIComponent(it.kw)}" target="_blank" rel="noopener">Amazon</a>
+        <a class="item-link" href="https://search.rakuten.co.jp/search/mall/${encodeURIComponent(it.kw)}/" target="_blank" rel="noopener">楽天</a>
+        <a class="item-link" href="https://jp.mercari.com/search?keyword=${encodeURIComponent(it.kw)}" target="_blank" rel="noopener">メルカリ</a>
+        <a class="item-link" href="https://shopping.yahoo.co.jp/search?p=${encodeURIComponent(it.kw)}" target="_blank" rel="noopener">Yahoo!</a>
       </div>
       <p class="muted" style="font-size:.72rem;margin-top:8px">購入は任意です。効果には個人差があります。</p>
     </div>`; })()}
@@ -1060,7 +1062,7 @@ document.addEventListener("click", e => {
   if (rg) { $("#tab-chart").dataset.range = rg.dataset.range; renderChart(); return; }
   const wk = e.target.closest("[data-week]");
   if (wk) { reportOffset = Number(wk.dataset.week); renderReport(); return; }
-  if (e.target.id === "btnSettings") return switchTab("settings");
+  if (e.target.closest("#btnSettings")) return switchTab("settings");
   if (e.target.id === "saveLogBtn") {
     const day = getDay(logDate);
     const v = $("#stepsInput").value.trim();

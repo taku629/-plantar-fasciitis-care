@@ -32,7 +32,7 @@ body {
 .app-header h1 { font-size: 1.1rem; font-weight: 700; }
 .icon-btn {
   background: rgba(255,255,255,.18); border: none; color: #fff;
-  width: 44px; height: 44px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   display: grid; place-items: center; cursor: pointer;
 }
 
@@ -202,8 +202,8 @@ body.simple .adv-hide { display: none !important; }
 .hosp-stars { display: flex; gap: 4px; }
 .hosp-star { font-size: 2rem; color: var(--line); background: none; border: none; cursor: pointer; padding: 4px; line-height: 1; min-width: 48px; min-height: 48px; }
 .hosp-star.on { color: #E8A020; }
-.item-links { display: flex; gap: 8px; margin-top: 10px; }
-.item-link { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px; border: 1.5px solid var(--accent); border-radius: 10px; color: var(--accent); background: #fff; font-weight: 700; font-size: .88rem; text-decoration: none; }
+.item-links { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.item-link { flex: 1 1 40%; display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px; border: 1.5px solid var(--accent); border-radius: 10px; color: var(--accent); background: #fff; font-weight: 700; font-size: .88rem; text-decoration: none; }
 .item-link:active { transform: scale(.97); }
 body.hc .item-link { border-color: #444; color: #000; }
 
