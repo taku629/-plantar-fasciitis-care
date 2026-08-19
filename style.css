@@ -207,6 +207,26 @@ body.simple .adv-hide { display: none !important; }
 .item-link:active { transform: scale(.97); }
 body.hc .item-link { border-color: #444; color: #000; }
 
+/* 継続支援 */
+.dot-row { display: flex; gap: 5px; margin-top: 10px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+.dot.on { background: var(--accent); }
+.mission-card { border-left: 4px solid var(--accent); }
+.mission-card.done { background: var(--accent-soft); }
+.delta { font-weight: 700; margin-top: 6px; }
+.delta.good { color: var(--accent); }
+.delta.bad { color: var(--warn); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-w { text-align: center; font-size: .75rem; color: var(--ink-soft); font-weight: 700; padding: 2px 0; }
+.cal-day { aspect-ratio: 1; border: none; border-radius: 50%; background: transparent; color: var(--ink); font-size: .85rem; font-family: inherit; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.cal-day.rec { background: var(--accent); color: #fff; font-weight: 700; }
+.cal-day.today { box-shadow: 0 0 0 2px var(--accent) inset; }
+.cal-day.empty { cursor: default; }
+body.hc .cal-day.rec { background: #000; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 300; overflow: hidden; }
+.confetti i { position: absolute; top: -16px; border-radius: 2px; animation: confettiDrop 1.8s ease-in forwards; }
+@keyframes confettiDrop { to { transform: translateY(110vh) rotate(720deg); opacity: .7; } }
+
 @media print {
   .bottom-nav, .app-header, .no-print, .toast, .overlay { display: none !important; }
   body { background: #fff; padding-bottom: 0; font-size: 12pt; }

@@ -343,6 +343,55 @@ function todayItem() {
   return ITEMS[doy % ITEMS.length];
 }
 
+/* ---------- 継続支援 ---------- */
+const MISSIONS = [
+  { text: "今朝の痛みを記録しよう", done: d => d.morningPain !== null },
+  { text: "体操を1セットだけやろう", done: d => Object.values(d.exercises).some(v => v > 0) },
+  { text: "歩数を記録しよう", done: d => d.steps !== null },
+  { text: "好きな体操を1つやろう", done: d => Object.values(d.exercises).some(v => v > 0) },
+  { text: "足の写真を1枚撮ろう", done: d => d.photos.length > 0 },
+  { text: "体重を記録しよう", done: d => d.weight !== null },
+  { text: "夜の痛みを記録しよう", done: d => d.eveningPain !== null },
+];
+function dayOfYear() {
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  return Math.floor((Date.now() - start.getTime()) / 86400000);
+}
+function todayMission(day) {
+  const m = MISSIONS[dayOfYear() % MISSIONS.length];
+  return { text: m.text, done: m.done(day) };
+}
+function calendarHTML() {
+  const now = new Date(), y = now.getFullYear(), mo = now.getMonth();
+  const first = new Date(y, mo, 1).getDay();
+  const daysIn = new Date(y, mo + 1, 0).getDate();
+  let cells = "";
+  for (let i = 0; i < first; i++) cells += `<span class="cal-day empty"></span>`;
+  for (let d = 1; d <= daysIn; d++) {
+    const k = `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const rec = state.days[k] && state.days[k].morningPain !== null && state.days[k].morningPain !== undefined;
+    cells += `<button type="button" class="cal-day${rec ? " rec" : ""}${k === todayKey() ? " today" : ""}" data-cal="${k}">${d}</button>`;
+  }
+  return `<div class="cal-grid">
+    ${["日","月","火","水","木","金","土"].map(w => `<span class="cal-w">${w}</span>`).join("")}${cells}</div>`;
+}
+function celebrate() {
+  const wrap = document.createElement("div");
+  wrap.className = "confetti";
+  const colors = ["#2E7D5B", "#E8B04B", "#D66", "#7B9ED6", "#8BC34A"];
+  for (let i = 0; i < 36; i++) {
+    const s = document.createElement("i");
+    s.style.left = Math.random() * 100 + "vw";
+    s.style.background = colors[i % colors.length];
+    const sz = 6 + Math.random() * 8;
+    s.style.width = sz + "px"; s.style.height = sz + "px";
+    s.style.animationDelay = Math.random() * 0.5 + "s";
+    wrap.appendChild(s);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(() => wrap.remove(), 2400);
+}
+
 /* ---------- HOME ---------- */
 function renderHome() {
   const el = $("#tab-home");
@@ -362,6 +411,17 @@ function renderHome() {
   const exDays7 = wk7.filter(k => state.days[k] && Object.keys(state.days[k].exercises).length > 0).length;
   const latestWeight = [...recentDayKeys(60)].map(k => state.days[k]).find(d => d && d.weight);
 
+  const dots = recentDayKeys(14).reverse().map(k => {
+    const dd = state.days[k];
+    const rec = dd && dd.morningPain !== null && dd.morningPain !== undefined;
+    return `<span class="dot${rec ? " on" : ""}"></span>`;
+  }).join("");
+  const mission = todayMission(day);
+  const yk = dayKey(new Date(Date.now() - 86400000));
+  const yd = state.days[yk];
+  const delta = (day.morningPain !== null && day.morningPain !== undefined && yd && yd.morningPain !== null && yd.morningPain !== undefined)
+    ? day.morningPain - yd.morningPain : null;
+
   el.innerHTML = `
     <div class="card">
       <div class="big-date">${fmtJP(key)}</div>
@@ -371,6 +431,14 @@ function renderHome() {
         ${exDays7 >= 3 ? `<span class="badge">今週 ${exDays7}日 体操</span>` : ""}
         ${latestWeight && !state.settings.hideWeight ? `<span class="badge">体重 ${latestWeight.weight}kg</span>` : ""}
       </div>
+      <div class="dot-row">${dots}</div>
+      <div class="muted" style="font-size:.72rem">直近14日 ●=記録あり</div>
+    </div>
+
+    <div class="card mission-card${mission.done ? " done" : ""}">
+      <h2>今日のミッション</h2>
+      <div style="font-weight:700">${mission.done ? "達成! " : ""}${mission.text}</div>
+      ${mission.done ? `<div class="muted">よくできました。この調子です。</div>` : ""}
     </div>
 
     ${advice.length ? `<div class="card"><h2>あなたへの提案</h2>
@@ -381,6 +449,7 @@ function renderHome() {
       <p class="muted">起きて最初に床へ足をついた時の痛みは?</p>
       ${painScaleHTML(day.morningPain, "morningPain")}
       ${day.morningPain !== null ? `<p class="muted">記録済み: <strong>${day.morningPain}</strong></p>` : ""}
+      ${delta !== null ? `<p class="delta ${delta < 0 ? "good" : delta > 0 ? "bad" : ""}">昨日より ${delta === 0 ? "同じ" : delta < 0 ? `${delta}(楽になった)` : `+${delta}(悪化)`}</p>` : ""}
     </div>
 
     <div class="card">
@@ -393,6 +462,12 @@ function renderHome() {
         </div>`;
       }).join("")}
       <button class="btn btn-primary" data-goto="exercise" style="width:100%;margin-top:10px">体操を始める</button>
+    </div>
+
+    <div class="card">
+      <h2>記録カレンダー</h2>
+      ${calendarHTML()}
+      <p class="muted" style="font-size:.75rem;margin-top:6px">緑=記録した日。日付をタップするとその日の記録を開けます。</p>
     </div>
 
     <div class="card">
@@ -448,6 +523,11 @@ function renderHome() {
     </div>
     <div class="card" id="insightsCard"></div>`;
   updateHospStars();
+  const MS = [7, 14, 30, 60, 100];
+  if (MS.includes(streak) && state.settings.celebrateStreak !== streak) {
+    state.settings.celebrateStreak = streak; save();
+    setTimeout(() => { celebrate(); toast(`記録 ${streak}日連続、すごい!`); }, 400);
+  }
   if (!state.settings.simple) loadFeed();
 }
 
@@ -681,6 +761,10 @@ function markSet(exId) {
   const day = getDay(todayKey());
   day.exercises[exId] = (day.exercises[exId] || 0) + 1;
   save();
+  if (exercisesDoneCount(day) === EXERCISES.length && state.settings.celebrateDate !== todayKey()) {
+    state.settings.celebrateDate = todayKey(); save();
+    celebrate(); toast("6種類すべて完了!すばらしい!");
+  }
   if (activeTab === "exercise") renderExercises();
   if (activeTab === "home") renderHome();
 }
@@ -884,6 +968,7 @@ function renderReport() {
       <div class="btn-row">
         <button class="btn btn-primary" id="printBtn">印刷 / PDF保存</button>
         <button class="btn" id="copyReportBtn">テキストをコピー</button>
+        <button class="btn" id="lineShareBtn">LINEで週報を送る</button>
       </div>
       <p class="muted" style="margin-top:8px">印刷画面は医師に見せる用。コピーしたテキストはLINEやメールで送れます。</p>
     </div>
@@ -1045,6 +1130,8 @@ document.addEventListener("click", e => {
     if (i >= 0) { state.hospitals.splice(i, 1); save(); renderHome(); }
     return;
   }
+  const cal = e.target.closest("[data-cal]");
+  if (cal) { logDate = cal.dataset.cal; switchTab("log"); return; }
   if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
   const dp = e.target.closest("[data-delphoto]");
   if (dp) {
@@ -1139,6 +1226,15 @@ document.addEventListener("click", e => {
     return;
   }
   if (e.target.id === "printBtn") return window.print();
+  if (e.target.id === "lineShareBtn") {
+    const text = reportText();
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {});
+    } else {
+      window.open("https://line.me/R/msg/text/?" + encodeURIComponent(text), "_blank");
+    }
+    return;
+  }
   if (e.target.id === "copyReportBtn") {
     navigator.clipboard.writeText(reportText()).then(() => toast("コピーしました"), () => toast("コピーできませんでした"));
     return;
