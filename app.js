@@ -465,17 +465,21 @@ function renderHome() {
     </div>
 
     <div class="card">
-      <h2>記録カレンダー</h2>
-      ${calendarHTML()}
-      <p class="muted" style="font-size:.75rem;margin-top:6px">緑=記録した日。日付をタップするとその日の記録を開けます。</p>
-    </div>
-
-    <div class="card">
       <h2>夜の痛み(寝る前に)</h2>
       ${painScaleHTML(day.eveningPain, "eveningPain")}
     </div>
 
+    <details class="ex-item more-box" id="moreBox"${moreOpen ? " open" : ""}>
+      <summary><span style="font-weight:700">もっと見る</span><span class="muted" style="font-size:.78rem">カレンダー・アイテム・病院・豆知識</span></summary>
+      <div class="more-body">
+
     <div class="tip-card">${tip}</div>
+
+    <div class="card">
+      <h2>記録カレンダー</h2>
+      ${calendarHTML()}
+      <p class="muted" style="font-size:.75rem;margin-top:6px">緑=記録した日。日付をタップするとその日の記録を開けます。</p>
+    </div>
 
     ${(() => { const it = todayItem(); return `
     <div class="card">
@@ -521,7 +525,9 @@ function renderHome() {
       <h2>足底腱膜炎の最新情報</h2>
       <p class="muted" id="feedBody">読み込み中…</p>
     </div>
-    <div class="card" id="insightsCard"></div>`;
+    <div class="card" id="insightsCard"></div>
+      </div>
+    </details>`;
   updateHospStars();
   const MS = [7, 14, 30, 60, 100];
   if (MS.includes(streak) && state.settings.celebrateStreak !== streak) {
@@ -571,6 +577,7 @@ function articleTag(title) {
   return "足底腱膜炎の研究";
 }
 let hospRating = 3;
+let moreOpen = false;
 function hospRow(h) {
   return `<div class="hosp-item">
     <div class="ex-head">
@@ -1278,6 +1285,7 @@ document.addEventListener("click", e => {
 document.addEventListener("toggle", e => {
   const d = e.target.closest("details.ex-item[data-exid]");
   if (d) { d.open ? openEx.add(d.dataset.exid) : openEx.delete(d.dataset.exid); }
+  if (e.target.id === "moreBox") moreOpen = e.target.open;
 }, true);
 
 document.addEventListener("change", e => {

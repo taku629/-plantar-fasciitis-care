@@ -226,6 +226,9 @@ body.hc .cal-day.rec { background: #000; }
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 300; overflow: hidden; }
 .confetti i { position: absolute; top: -16px; border-radius: 2px; animation: confettiDrop 1.8s ease-in forwards; }
 @keyframes confettiDrop { to { transform: translateY(110vh) rotate(720deg); opacity: .7; } }
+.more-box { background: transparent; border-style: dashed; margin-top: 12px; }
+.more-body { padding: 4px 0 8px; }
+.more-body .card { box-shadow: none; }
 
 @media print {
   .bottom-nav, .app-header, .no-print, .toast, .overlay { display: none !important; }
