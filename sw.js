@@ -1,4 +1,4 @@
-const CACHE = "sokutei-care-v8";
+const CACHE = "sokutei-care-v9";
 const ASSETS = [
   "./",
   "./index.html",
@@ -37,8 +37,9 @@ self.addEventListener("fetch", e => {
 
 self.addEventListener("periodicsync", e => {
   if (e.tag === "daily-reminder") {
+    const morning = new Date().getHours() < 12;
     e.waitUntil(self.registration.showNotification("足底腱膜炎ケア手帳", {
-      body: "ストレッチと痛み記録の時間です",
+      body: morning ? "朝の一歩目の痛み記録とストレッチの時間です" : "夜の痛み記録の時間です",
       icon: "icons/icon-192.png",
       badge: "icons/icon-192.png",
       tag: "daily-reminder",

@@ -417,6 +417,11 @@ function renderHome() {
     return `<span class="dot${rec ? " on" : ""}"></span>`;
   }).join("");
   const mission = todayMission(day);
+  const hour = new Date().getHours();
+  const remindMsg = hour >= 19 && day.eveningPain === null
+    ? "夜の痛みがまだ記録されていません"
+    : hour >= 9 && (day.morningPain === null || day.morningPain === undefined)
+      ? "今朝の痛みがまだ記録されていません" : null;
   const yk = dayKey(new Date(Date.now() - 86400000));
   const yd = state.days[yk];
   const delta = (day.morningPain !== null && day.morningPain !== undefined && yd && yd.morningPain !== null && yd.morningPain !== undefined)
@@ -434,6 +439,8 @@ function renderHome() {
       <div class="dot-row">${dots}</div>
       <div class="muted" style="font-size:.72rem">直近14日 ●=記録あり</div>
     </div>
+
+    ${remindMsg ? `<div class="card warn-card"><strong>${remindMsg}</strong><div class="muted" style="font-size:.8rem">下のボタンから記録できます。</div></div>` : ""}
 
     <div class="card mission-card${mission.done ? " done" : ""}">
       <h2>今日のミッション</h2>
@@ -539,9 +546,9 @@ function renderHome() {
 
 /* ---------- feed & insights ---------- */
 const FEED_TIPS = [
-  { title: "朝イチストレッチが効く理由", summary: "睡眠中に足底筋膜は縮みます。起きてすぐ足をつく前にストレッチすると、つっぱり感と痛みを抑えられます。", url: "", source: "ケア手帳 編集" },
+  { title: "朝イチストレッチが効く理由", summary: "睡眠中に足底筋膜は縮みます。起きてすぐ足をつく前にストレッチすると、つっぱり感と痛みを抑えられます(足底筋膜専用ストレッチの研究)。", url: "https://pubmed.ncbi.nlm.nih.gov/16252896/", source: "ケア手帳 編集" },
   { title: "高負荷ストレッチ(ヒールレイズ)の研究", summary: "段差でのヒールレイズを週3回行うプログラムで、3ヶ月後の痛み改善がストレッチのみより大きかった報告があります(Rathleffら 2015)。", url: "https://pubmed.ncbi.nlm.nih.gov/25145882/", source: "研究紹介" },
-  { title: "靴とインソール", summary: "土踏まずを支えるインソールやクッション性のある靴は痛み軽減に有効とされています。薄い靴・裸足は避けましょう。", url: "", source: "ケア手帳 編集" },
+  { title: "靴とインソール", summary: "土踏まずを支えるインソールやクッション性のある靴は痛み軽減に有効とされています。薄い靴・裸足は避けましょう。", url: "https://pubmed.ncbi.nlm.nih.gov/?term=plantar+fasciitis+foot+orthoses", source: "ケア手帳 編集" },
 ];
 let feedLoaded = false;
 async function fetchPubMedItems() {
