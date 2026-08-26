@@ -101,7 +101,7 @@ function sanitizeDay(x) {
   d.meds = !!x.meds;
   d.clinic = !!x.clinic;
   d.photos = Array.isArray(x.photos)
-    ? x.photos.filter(p => typeof p === "string" && p.startsWith("data:image/")).slice(0, 4) : [];
+    ? x.photos.filter(p => typeof p === "string" && /^data:image\/(png|jpe?g|webp|gif);(base64,)?[A-Za-z0-9+/=,._~%-]*$/.test(p)).slice(0, 4) : [];
   return d;
 }
 function sanitizeHospital(h) {
@@ -216,7 +216,7 @@ function generateAdvice() {
     shoeAvg.sort((a, b) => b.avg - a.avg);
     const worst = shoeAvg[0], best = shoeAvg[shoeAvg.length - 1];
     if (worst.avg - best.avg >= 1.5)
-      adv.push(`「${worst.s}」の日は痛みが強め(平均${worst.avg.toFixed(1)})。「${best.s}」(平均${best.avg.toFixed(1)})が合っているかもしれません。`);
+      adv.push(`「${esc(worst.s)}」の日は痛みが強め(平均${worst.avg.toFixed(1)})。「${esc(best.s)}」(平均${best.avg.toFixed(1)})が合っているかもしれません。`);
   }
   // 体操の翌朝効果
   const map = {}; rec.forEach(x => map[x.k] = x.d);
@@ -511,18 +511,18 @@ function renderHome() {
       ${state.hospitals.length
         ? state.hospitals.slice().sort((a, b) => b.rating - a.rating).map(hospRow).join("")
         : `<p class="muted">行ったことのある病院を登録すると、評価・費用・予約リンクがここに並びます。</p>`}
-      <details class="ex-item">
+      <details class="ex-item" id="hospAddBox"${hospAddOpen ? " open" : ""}>
         <summary><span style="font-weight:700">病院を追加する</span></summary>
         <div style="padding:0 14px 14px">
-          <label class="field"><span>病院名</span><input type="text" id="hospName" maxlength="60" placeholder="例: ○○整形外科"></label>
+          <label class="field"><span>病院名</span><input type="text" id="hospName" maxlength="60" placeholder="例: ○○整形外科" value="${esc(hospDraft.hospName || "")}"></label>
           <label class="field"><span>評価(タップで選ぶ)</span></label>
           <div class="hosp-stars" id="hospStars">
             ${[1,2,3,4,5].map(i => `<button type="button" class="hosp-star" data-hstar="${i}">★</button>`).join("")}
           </div>
-          <label class="field" style="margin-top:10px"><span>費用メモ(例: 初診3,500円)</span><input type="text" id="hospCost" maxlength="60"></label>
-          <label class="field"><span>電話番号</span><input type="text" id="hospPhone" maxlength="20" inputmode="tel"></label>
-          <label class="field"><span>予約・サイトのURL</span><input type="text" id="hospUrl" maxlength="300" inputmode="url" placeholder="https://"></label>
-          <label class="field"><span>メモ</span><input type="text" id="hospMemo" maxlength="200"></label>
+          <label class="field" style="margin-top:10px"><span>費用メモ(例: 初診3,500円)</span><input type="text" id="hospCost" maxlength="60" value="${esc(hospDraft.hospCost || "")}"></label>
+          <label class="field"><span>電話番号</span><input type="text" id="hospPhone" maxlength="20" inputmode="tel" value="${esc(hospDraft.hospPhone || "")}"></label>
+          <label class="field"><span>予約・サイトのURL</span><input type="text" id="hospUrl" maxlength="300" inputmode="url" placeholder="https://" value="${esc(hospDraft.hospUrl || "")}"></label>
+          <label class="field"><span>メモ</span><input type="text" id="hospMemo" maxlength="200" value="${esc(hospDraft.hospMemo || "")}"></label>
           <button class="btn btn-primary" id="addHospBtn" style="width:100%">追加する</button>
         </div>
       </details>
@@ -553,10 +553,10 @@ const FEED_TIPS = [
 let feedLoaded = false;
 async function fetchPubMedItems() {
   const q = encodeURIComponent("plantar fasciitis");
-  const r1 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&sort=pubdate&retmax=5&retmode=json`);
+  const r1 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&sort=pubdate&retmax=5&retmode=json`, { signal: AbortSignal.timeout(9000) });
   const ids = (await r1.json()).esearchresult.idlist;
   if (!ids || !ids.length) return [];
-  const r2 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(",")}&retmode=json`);
+  const r2 = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ids.join(",")}&retmode=json`, { signal: AbortSignal.timeout(9000) });
   const data = (await r2.json()).result;
   return ids.map(pmid => {
     const r = data[pmid] || {};
@@ -585,6 +585,8 @@ function articleTag(title) {
 }
 let hospRating = 3;
 let moreOpen = false;
+let hospAddOpen = false;
+const hospDraft = {};
 function hospRow(h) {
   return `<div class="hosp-item">
     <div class="ex-head">
@@ -821,7 +823,7 @@ function renderLog() {
       </div>
       <h3>足の写真(腫れ・見た目の記録)</h3>
       <div class="photo-row">${(day.photos || []).map((p, i) =>
-        `<span class="photo-cell"><img src="${p}" alt="足の写真${i + 1}"><button class="photo-del" data-delphoto="${i}" aria-label="削除">×</button></span>`).join("")}
+        `<span class="photo-cell"><img src="${esc(p)}" alt="足の写真${i + 1}"><button class="photo-del" data-delphoto="${i}" aria-label="削除">×</button></span>`).join("")}
       </div>
       <input type="file" id="photoInput" accept="image/*" class="hidden">
       <button class="btn" id="addPhotoBtn" ${(day.photos || []).length >= 4 ? "disabled" : ""}>写真を追加(1日4枚まで)</button>
@@ -1075,6 +1077,7 @@ function renderSettings() {
 let activeTab = "home";
 const renderers = { home: renderHome, exercise: renderExercises, log: renderLog, chart: renderChart, report: renderReport, settings: renderSettings };
 function switchTab(tab) {
+  if (!Object.prototype.hasOwnProperty.call(renderers, tab)) tab = "home";
   if (state.settings.simple && ["log", "chart", "report"].includes(tab)) tab = "home";
   activeTab = tab;
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
@@ -1125,7 +1128,7 @@ document.addEventListener("click", e => {
     });
     if (!h) { toast("病院名を入力してください"); return; }
     state.hospitals.push(h);
-    if (save()) { hospRating = 3; renderHome(); toast("病院を登録しました"); }
+    if (save()) { hospRating = 3; ["hospName", "hospCost", "hospPhone", "hospUrl", "hospMemo"].forEach(k => delete hospDraft[k]); hospAddOpen = false; renderHome(); toast("病院を登録しました"); }
     return;
   }
   const hv = e.target.closest("[data-hvisit]");
@@ -1271,7 +1274,7 @@ document.addEventListener("click", e => {
   }
   if (e.target.id === "wipeBtn") {
     if (confirm("本当に全データを削除しますか? 元に戻せません。")) {
-      state = { settings: defaultSettings(), days: {} };
+      state = { settings: defaultSettings(), days: {}, hospitals: [] };
       if (save()) { applyUi(); renderers[activeTab](); toast("削除しました"); }
     }
     return;
@@ -1293,11 +1296,16 @@ document.addEventListener("toggle", e => {
   const d = e.target.closest("details.ex-item[data-exid]");
   if (d) { d.open ? openEx.add(d.dataset.exid) : openEx.delete(d.dataset.exid); }
   if (e.target.id === "moreBox") moreOpen = e.target.open;
+  if (e.target.id === "hospAddBox") hospAddOpen = e.target.open;
 }, true);
 
 document.addEventListener("change", e => {
   if (e.target.id === "logDateInput") { logDate = e.target.value || todayKey(); renderLog(); }
   if (e.target.id === "photoInput" && e.target.files && e.target.files[0]) addPhoto(e.target.files[0]);
+});
+document.addEventListener("input", e => {
+  if (["hospName", "hospCost", "hospPhone", "hospUrl", "hospMemo"].includes(e.target.id))
+    hospDraft[e.target.id] = e.target.value;
 });
 
 function addPhoto(file) {
@@ -1336,7 +1344,7 @@ if (qp.get("simple") === "1") state.settings.simple = true;
 save();
 applyUi();
 const tabParam = qp.get("tab");
-switchTab(tabParam && renderers[tabParam] && !(state.settings.simple && ["log", "chart", "report"].includes(tabParam)) ? tabParam : "home");
+switchTab(tabParam && Object.prototype.hasOwnProperty.call(renderers, tabParam) && !(state.settings.simple && ["log", "chart", "report"].includes(tabParam)) ? tabParam : "home");
 sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
