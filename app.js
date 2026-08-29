@@ -48,7 +48,59 @@ const EXERCISES = [
     desc: "冷凍したペットボトルを床に置き、足裏でゆっくり前後に転がします。5〜10分。",
     tip: "歩いたあとや痛みが強いときに。直接氷を当てるより安全です。",
   },
+  {
+    id: "ballroll",
+    name: "ボールころころマッサージ",
+    sets: 1, seconds: 120, perSet: "1〜2分",
+    desc: "テニスボールかゴルフボールを土踏まずの下に置き、かかとからつま先へゆっくり転がします。左右1〜2分ずつ。",
+    tip: "強く押しすぎなくてOK。じんわり気持ちいい程度で。",
+  },
+  {
+    id: "archmass",
+    name: "土踏まず指圧マッサージ",
+    sets: 1, seconds: 120, perSet: "1〜2分",
+    desc: "座って足を膝に乗せ、両手の親指で土踏まずをかかとからつま先へゆっくり押しほぐします。左右1〜2分。",
+    tip: "朝イチのこわばりや、歩いたあとの疲れに。",
+  },
+  {
+    id: "toesplay",
+    name: "足指グーパー",
+    sets: 2, seconds: 0, perSet: "10回",
+    desc: "座って足の指をギュッと握って5秒 → パッと広げて5秒。10回を左右で。",
+    tip: "足の小さな筋肉を動かして土踏まずを支えます。",
+  },
+  {
+    id: "ankleabc",
+    name: "足首アルファベット",
+    sets: 1, seconds: 0, perSet: "A〜Z",
+    desc: "座って片足を少し浮かせ、つま先でアルファベットをAからZまで大きく書きます。反対の足も。",
+    tip: "足首まわり全体をやさしく動かします。",
+  },
+  {
+    id: "stepdrop",
+    name: "段差かかと下げストレッチ",
+    sets: 3, seconds: 30, perSet: "30秒",
+    desc: "階段や踏み台の縁に前足部を乗せ、手すりにつかまりながらかかとをゆっくり下げます。ふくらはぎが伸びたら30秒キープ。左右各30秒。",
+    tip: "必ず手すりや壁につかまって行いましょう。",
+  },
+  {
+    id: "toewalk",
+    name: "つま先歩き",
+    sets: 2, seconds: 30, perSet: "30秒",
+    desc: "壁やテーブルに軽く手を添え、かかとを上げたままつま先でゆっくり歩きます。30秒×2セット。",
+    tip: "ふくらはぎと足の筋肉をやさしく鍛えます。",
+  },
 ];
+
+// 体操メニューは2組(A日/B日)が日替わりで入れ替わる
+const MENU_SIZE = 6;
+function todayExercises() {
+  const off = dayOfYear() % 2 ? MENU_SIZE : 0;
+  return EXERCISES.slice(off, off + MENU_SIZE);
+}
+function menuDoneCount(day) {
+  return todayExercises().filter(e => (day.exercises[e.id] || 0) >= e.sets).length;
+}
 
 const TIPS = [
   "朝の最初の一歩が痛むのが足底腱膜炎の特徴です。起きる前に足底筋膜ストレッチをすると楽になります。",
@@ -397,7 +449,7 @@ function renderHome() {
   const el = $("#tab-home");
   const key = todayKey();
   const day = getDay(key);
-  const done = exercisesDoneCount(day);
+  const done = menuDoneCount(day);
   const tip = TIPS[new Date().getDate() % TIPS.length];
   const advice = generateAdvice();
 
@@ -460,8 +512,8 @@ function renderHome() {
     </div>
 
     <div class="card">
-      <h2>今日の体操 <span class="streak">${done}/${EXERCISES.length} 完了</span></h2>
-      ${EXERCISES.map(ex => {
+      <h2>今日の体操 <span class="streak">${done}/${MENU_SIZE} 完了</span></h2>
+      ${todayExercises().map(ex => {
         const c = day.exercises[ex.id] || 0;
         return `<div class="ex-head" style="padding:6px 0">
           <span>${c >= ex.sets ? "✔" : "・"} ${ex.name}</span>
@@ -674,6 +726,12 @@ const EX_ART = {
   towel:    { img: "art/towel.jpg",    dir: "left",  hint: "タオルを指でたぐり寄せる" },
   heelraise:{ img: "art/heelraise.jpg",dir: "up",    hint: "かかとを上げて下げる" },
   ice:      { img: "art/ice.jpg",      dir: "both",  hint: "足の裏で前後にころころ" },
+  ballroll: { img: "art/ballroll.jpg", dir: "both",  hint: "かかとからつま先へ転がす" },
+  archmass: { img: "art/archmass.jpg", dir: "right", hint: "土踏まずを押しほぐす" },
+  toesplay: { img: "art/toesplay.jpg", dir: "both",  hint: "指を閉じて広げて" },
+  ankleabc: { img: "art/ankleabc.jpg", dir: "right", hint: "つま先で文字を書く" },
+  stepdrop: { img: "art/stepdrop.jpg", dir: "down",  hint: "かかとをゆっくり下げる" },
+  toewalk:  { img: "art/toewalk.jpg",  dir: "right", hint: "つま先でゆっくり歩く" },
 };
 const MOTION_ARROWS = {
   up:    '<path d="M12 22 V6" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M5 11 L12 4 L19 11" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -701,8 +759,8 @@ function renderExercises() {
   const day = getDay(todayKey());
   el.innerHTML = `
     <div class="card"><h2>今日のリハビリ体操</h2>
-      <p class="muted">全部やらなくてもOK。毎日少しずつ続けることが一番の治療です。</p></div>
-    ${EXERCISES.map(ex => {
+      <p class="muted">メニューは日替わりです。全部やらなくてもOK、毎日少しずつ続けるのが一番の治療です。</p></div>
+    ${todayExercises().map(ex => {
       const c = day.exercises[ex.id] || 0;
       const done = c >= ex.sets;
       return `<details class="ex-item${done ? " done" : ""}" data-exid="${ex.id}"${openEx.has(ex.id) ? " open" : ""}>
@@ -777,9 +835,9 @@ function markSet(exId) {
   const day = getDay(todayKey());
   day.exercises[exId] = (day.exercises[exId] || 0) + 1;
   save();
-  if (exercisesDoneCount(day) === EXERCISES.length && state.settings.celebrateDate !== todayKey()) {
+  if (menuDoneCount(day) === MENU_SIZE && state.settings.celebrateDate !== todayKey()) {
     state.settings.celebrateDate = todayKey(); save();
-    celebrate(); toast("6種類すべて完了!すばらしい!");
+    celebrate(); toast("今日の体操すべて完了!すばらしい!");
   }
   if (activeTab === "exercise") renderExercises();
   if (activeTab === "home") renderHome();
@@ -865,7 +923,7 @@ function renderChart() {
     }
     if (day) {
       const done = exercisesDoneCount(day);
-      if (done > 0) dots += `<circle cx="${x(i)}" cy="${padT + ih + 6}" r="3.5" fill="#2F8C6E" opacity="${0.3 + 0.7 * done / EXERCISES.length}"/>`;
+      if (done > 0) dots += `<circle cx="${x(i)}" cy="${padT + ih + 6}" r="3.5" fill="#2F8C6E" opacity="${0.3 + 0.7 * Math.min(done, MENU_SIZE) / MENU_SIZE}"/>`;
     }
     if (day && day.morningPain !== null && day.morningPain !== undefined)
       lineM += `${lineM ? " L" : "M"}${x(i).toFixed(1)},${y(day.morningPain).toFixed(1)} `;
@@ -976,7 +1034,7 @@ function renderReport() {
           <td>${x.d?.morningPain ?? "—"}</td>
           <td>${x.d?.eveningPain ?? "—"}</td>
           <td>${x.d?.steps ? x.d.steps.toLocaleString() : "—"}</td>
-          <td>${x.d ? exercisesDoneCount(x.d) + "/" + EXERCISES.length : "—"}</td>
+          <td>${x.d ? Math.min(exercisesDoneCount(x.d), MENU_SIZE) + "/" + MENU_SIZE : "—"}</td>
         </tr>`).join("")}
       </table>
     </div>
@@ -1001,7 +1059,7 @@ function reportText() {
   t += `朝の痛み 平均:${mAvg}  体操実施:${exDays}日\n`;
   days.forEach(x => {
     if (x.d) {
-      t += `${fmtJP(x.k)} 朝:${x.d.morningPain ?? "-"} 夜:${x.d.eveningPain ?? "-"} 歩数:${x.d.steps ?? "-"} 体操:${exercisesDoneCount(x.d)}/${EXERCISES.length}`;
+      t += `${fmtJP(x.k)} 朝:${x.d.morningPain ?? "-"} 夜:${x.d.eveningPain ?? "-"} 歩数:${x.d.steps ?? "-"} 体操:${Math.min(exercisesDoneCount(x.d), MENU_SIZE)}/${MENU_SIZE}`;
       if (x.d.weight) t += ` 体重:${x.d.weight}kg`;
       if (x.d.meds) t += " 服薬"; if (x.d.clinic) t += " 通院";
       if (x.d.notes) t += " メモ:" + x.d.notes;
