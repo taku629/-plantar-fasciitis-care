@@ -298,6 +298,21 @@ function generateAdvice() {
     const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
     if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
   }
+  // 曜日パターン検出(特定の曜日の朝に痛みが強い)
+  const byWd = {};
+  rec.forEach(x => { const w = new Date(x.k + "T12:00:00").getDay(); (byWd[w] = byWd[w] || []).push(x.d.morningPain); });
+  const overall = rec.reduce((s, x) => s + x.d.morningPain, 0) / rec.length;
+  const wdHit = Object.entries(byWd).filter(([, v]) => v.length >= 2)
+    .map(([w, v]) => ({ w: +w, avg: v.reduce((a, b) => a + b) / v.length, n: v.length }))
+    .find(o => o.avg - overall >= 1.5);
+  if (wdHit) {
+    const prevWd = WD[(wdHit.w + 6) % 7];
+    adv.push(`${WD[wdHit.w]}曜の朝は痛みが強めです(平均${wdHit.avg.toFixed(1)})。${prevWd}曜の活動が響いているかもしれません — ${prevWd}曜は歩きすぎないよう休憩を多めに。`);
+  }
+  // 靴の使用距離(買い替えアラート)
+  const wornOut = shoeMileage().find(o => o.km >= 480);
+  if (wornOut)
+    adv.push(`「${esc(wornOut.name)}」は約${Math.round(wornOut.km)}km使用しました(靴の寿命の目安は約500km)。靴底が減ると痛みの原因になります — 買い替えを検討してみてください。`);
   // 体操の継続率
   const last7 = recentDayKeys(7);
   const exDays7 = last7.filter(k => state.days[k] && Object.keys(state.days[k].exercises).length > 0).length;
@@ -309,6 +324,17 @@ function generateAdvice() {
   for (const k of recentDayKeys(60)) { if (state.days[k] && state.days[k].morningPain !== null && state.days[k].morningPain !== undefined) streak++; else break; }
   if (streak >= 7) adv.push(`${streak}日連続で記録中! この記録は診察時にも役立ちます。`);
   return adv;
+}
+
+// 靴ごとの累計歩行距離(km)。0.7m/歩で推定。どの競合にも無い独自指標
+function shoeMileage() {
+  const km = {};
+  Object.values(state.days).forEach(d => {
+    if (!d || !d.steps || !Array.isArray(d.shoes)) return;
+    d.shoes.forEach(s => { km[s] = (km[s] || 0) + d.steps * 0.0007; });
+  });
+  return Object.entries(km).map(([name, kmv]) => ({ name, km: kmv }))
+    .sort((a, b) => b.km - a.km);
 }
 
 /* ---------- helpers ---------- */
@@ -1106,6 +1132,8 @@ function renderSettings() {
         <input type="text" id="nameInput" value="${esc(state.settings.name)}" placeholder="例: 山田 花子"></label>
       <label class="field"><span>履物の候補(カンマ区切り)</span>
         <input type="text" id="shoesInput" value="${esc(state.settings.shoePresets.join(","))}"></label>
+      ${(() => { const m = shoeMileage(); return m.length ? `<div class="muted" style="font-size:.78rem;margin:4px 0 8px">${m.map(o =>
+        `${esc(o.name)}: 約${Math.round(o.km)}km${o.km >= 480 ? " <strong style=\"color:#C0392B\">— 替え時の目安</strong>" : ""}`).join("<br>")}</div>` : ""; })()}
       <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%">保存</button>
     </div>
     <div class="card">
