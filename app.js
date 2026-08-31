@@ -9,7 +9,7 @@ const EXERCISES = [
   {
     id: "fascia",
     name: "足底筋膜ストレッチ",
-    sets: 3, seconds: 30, perSet: "30秒",
+    sets: 3, seconds: 30, perSet: "30秒", sit: true,
     desc: "椅子に座って片方の足を反対の膝に乗せ、つま先を手で体の方へゆっくり反らせます。かかとの下〜土踏まずが伸びるのを感じましょう。左右各30秒。",
     tip: "起床直後と、長く座ったあと歩き出す前にやると特に効果的です。",
   },
@@ -30,7 +30,7 @@ const EXERCISES = [
   {
     id: "towel",
     name: "タオルつまみ",
-    sets: 1, seconds: 0, perSet: "10回",
+    sets: 1, seconds: 0, perSet: "10回", sit: true,
     desc: "床に置いたタオルを足の指で手繰り寄せるようにしてつまみます。10回を左右で。",
     tip: "足の指の筋肉を鍛えて土踏まずを支えます。",
   },
@@ -44,35 +44,35 @@ const EXERCISES = [
   {
     id: "ice",
     name: "足裏アイシング(ペットボトル)",
-    sets: 1, seconds: 300, perSet: "5〜10分",
+    sets: 1, seconds: 300, perSet: "5〜10分", sit: true,
     desc: "冷凍したペットボトルを床に置き、足裏でゆっくり前後に転がします。5〜10分。",
     tip: "歩いたあとや痛みが強いときに。直接氷を当てるより安全です。",
   },
   {
     id: "ballroll",
     name: "ボールころころマッサージ",
-    sets: 1, seconds: 120, perSet: "1〜2分",
+    sets: 1, seconds: 120, perSet: "1〜2分", sit: true,
     desc: "テニスボールかゴルフボールを土踏まずの下に置き、かかとからつま先へゆっくり転がします。左右1〜2分ずつ。",
     tip: "強く押しすぎなくてOK。じんわり気持ちいい程度で。",
   },
   {
     id: "archmass",
     name: "土踏まず指圧マッサージ",
-    sets: 1, seconds: 120, perSet: "1〜2分",
+    sets: 1, seconds: 120, perSet: "1〜2分", sit: true,
     desc: "座って足を膝に乗せ、両手の親指で土踏まずをかかとからつま先へゆっくり押しほぐします。左右1〜2分。",
     tip: "朝イチのこわばりや、歩いたあとの疲れに。",
   },
   {
     id: "toesplay",
     name: "足指グーパー",
-    sets: 2, seconds: 0, perSet: "10回",
+    sets: 2, seconds: 0, perSet: "10回", sit: true,
     desc: "座って足の指をギュッと握って5秒 → パッと広げて5秒。10回を左右で。",
     tip: "足の小さな筋肉を動かして土踏まずを支えます。",
   },
   {
     id: "ankleabc",
     name: "足首アルファベット",
-    sets: 1, seconds: 0, perSet: "A〜Z",
+    sets: 1, seconds: 0, perSet: "A〜Z", sit: true,
     desc: "座って片足を少し浮かせ、つま先でアルファベットをAからZまで大きく書きます。反対の足も。",
     tip: "足首まわり全体をやさしく動かします。",
   },
@@ -326,6 +326,39 @@ function generateAdvice() {
   return adv;
 }
 
+// 記録と相性の良い靴(朝の痛みが最も軽い靴)
+function bestShoe() {
+  const keys = recentDayKeys(30);
+  const byShoe = {};
+  keys.forEach(k => {
+    const d = state.days[k];
+    if (d && d.morningPain !== null && d.morningPain !== undefined)
+      (d.shoes || []).forEach(s => { (byShoe[s] = byShoe[s] || []).push(d.morningPain); });
+  });
+  const arr = Object.entries(byShoe).filter(([, v]) => v.length >= 3)
+    .map(([s, v]) => ({ s, avg: v.reduce((a, b) => a + b) / v.length })).sort((a, b) => a.avg - b.avg);
+  return arr.length >= 2 ? arr[0].s : null;
+}
+
+// 週末(土・日)だけ出る今週のふりかえりカード
+function weekendSummaryHTML() {
+  const dow = new Date().getDay();
+  if (dow !== 0 && dow !== 6) return "";
+  const wk = recentDayKeys(7).map(k => state.days[k]).filter(Boolean);
+  const recd = wk.filter(d => d.morningPain !== null && d.morningPain !== undefined);
+  if (!recd.length) return "";
+  const avg = recd.reduce((s, d) => s + d.morningPain, 0) / recd.length;
+  const prev = recentDayKeys(14).slice(7).map(k => state.days[k])
+    .filter(d => d && d.morningPain !== null && d.morningPain !== undefined);
+  const prevAvg = prev.length ? prev.reduce((s, d) => s + d.morningPain, 0) / prev.length : null;
+  const diff = prevAvg === null ? null : avg - prevAvg;
+  const exDays = wk.filter(d => Object.keys(d.exercises || {}).length > 0).length;
+  return `<div class="card"><h2>今週のふりかえり</h2>
+    <p style="font-size:1rem">記録 <strong>${recd.length}</strong>日 · 朝の痛み平均 <strong>${avg.toFixed(1)}</strong>${diff !== null ? ` <span class="delta ${diff < -0.4 ? "good" : diff > 0.4 ? "bad" : ""}">(先週比${diff > 0 ? "+" : ""}${diff.toFixed(1)})</span>` : ""}</p>
+    <p style="font-size:1rem">体操できた日: <strong>${exDays}</strong>日</p>
+    <p class="muted" style="font-size:.8rem">${diff !== null && diff <= -0.8 ? "先週より良くなっています。この調子です。" : diff !== null && diff >= 0.8 ? "先週より痛みが強めです。歩数と靴を見直してみましょう。" : "来週もコツコツ続けましょう。"}</p></div>`;
+}
+
 // 靴ごとの累計歩行距離(km)。0.7m/歩で推定。どの競合にも無い独自指標
 function shoeMileage() {
   const km = {};
@@ -495,6 +528,7 @@ function renderHome() {
     return `<span class="dot${rec ? " on" : ""}"></span>`;
   }).join("");
   const mission = todayMission(day);
+  const best = bestShoe();
   const hour = new Date().getHours();
   const remindMsg = hour >= 19 && day.eveningPain === null
     ? "夜の痛みがまだ記録されていません"
@@ -516,9 +550,11 @@ function renderHome() {
       </div>
       <div class="dot-row">${dots}</div>
       <div class="muted" style="font-size:.72rem">直近14日 ●=記録あり</div>
+      ${best ? `<div class="muted" style="font-size:.78rem;margin-top:4px">おすすめ履物: <strong>${esc(best)}</strong>(あなたの記録と相性◎)</div>` : ""}
     </div>
 
     ${remindMsg ? `<div class="card warn-card"><strong>${remindMsg}</strong><div class="muted" style="font-size:.8rem">下のボタンから記録できます。</div></div>` : ""}
+    ${weekendSummaryHTML()}
 
     <div class="card mission-card${mission.done ? " done" : ""}">
       <h2>今日のミッション</h2>
@@ -536,6 +572,9 @@ function renderHome() {
       ${day.morningPain !== null ? `<p class="muted">記録済み: <strong>${day.morningPain}</strong></p>` : ""}
       ${delta !== null ? `<p class="delta ${delta < 0 ? "good" : delta > 0 ? "bad" : ""}">昨日より ${delta === 0 ? "同じ" : delta < 0 ? `${delta}(楽になった)` : `+${delta}(悪化)`}</p>` : ""}
     </div>
+
+    ${day.morningPain !== null && day.morningPain >= 6 ? `<div class="card warn-card"><strong>今日は無理しない日</strong><div class="muted" style="font-size:.8rem;margin-top:4px">朝の痛みが強めです。ストレッチとアイシング中心にして、長距離の歩行は控えめに。ヒールレイズ系は休んでOKです。</div></div>` : ""}
+    ${day.morningPain !== null && day.morningPain <= 2 ? `<div class="card"><strong>今日は調子が良さそうです</strong><div class="muted" style="font-size:.8rem;margin-top:4px">痛みが軽い日こそ、体操をしっかりやるチャンスです。</div></div>` : ""}
 
     <div class="card">
       <h2>今日の体操 <span class="streak">${done}/${MENU_SIZE} 完了</span></h2>
@@ -779,14 +818,18 @@ function exArt(id) {
 
 const openEx = new Set();
 let timer = { id: null, exId: null, remain: 0, running: false };
+let sitOnly = false;
 
 function renderExercises() {
   const el = $("#tab-exercise");
   const day = getDay(todayKey());
+  const list = todayExercises().filter(ex => !sitOnly || ex.sit);
   el.innerHTML = `
     <div class="card"><h2>今日のリハビリ体操</h2>
-      <p class="muted">メニューは日替わりです。全部やらなくてもOK、毎日少しずつ続けるのが一番の治療です。</p></div>
-    ${todayExercises().map(ex => {
+      <p class="muted">メニューは日替わりです。全部やらなくてもOK、毎日少しずつ続けるのが一番の治療です。</p>
+      <button class="chip${sitOnly ? " on" : ""}" data-sitonly style="margin-top:6px">座ったままできる体操だけ</button></div>
+    ${list.length ? "" : `<div class="card"><p class="muted">今日の座り体操はありません。明日のメニューをご覧ください。</p></div>`}
+    ${list.map(ex => {
       const c = day.exercises[ex.id] || 0;
       const done = c >= ex.sets;
       return `<details class="ex-item${done ? " done" : ""}" data-exid="${ex.id}"${openEx.has(ex.id) ? " open" : ""}>
@@ -918,6 +961,7 @@ function renderLog() {
       </div>
       <label class="field"><span>メモ(痛む動作・できごとなど)</span>
         <textarea id="notesInput">${esc(day.notes)}</textarea></label>
+      <button class="btn" id="voiceBtn" style="margin-top:6px">🎤 声で入力(メモに追加)</button>
       <button class="btn btn-primary" id="saveLogBtn" style="width:100%">保存する</button>
     </div>`;
 }
@@ -1252,7 +1296,27 @@ document.addEventListener("click", e => {
   if (rg) { $("#tab-chart").dataset.range = rg.dataset.range; renderChart(); return; }
   const wk = e.target.closest("[data-week]");
   if (wk) { reportOffset = Number(wk.dataset.week); renderReport(); return; }
+  if (e.target.dataset && e.target.dataset.sitonly !== undefined) {
+    sitOnly = !sitOnly; renderExercises(); return;
+  }
   if (e.target.closest("#btnSettings")) return switchTab("settings");
+  if (e.target.id === "voiceBtn") {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast("この端末では音声入力が使えません"); return; }
+    const rec = new SR();
+    rec.lang = "ja-JP"; rec.interimResults = false;
+    toast("聞き取り中… 話してください");
+    rec.onresult = ev => {
+      const t = ev.results[0][0].transcript;
+      const ta = $("#notesInput");
+      ta.value = (ta.value ? ta.value + " " : "") + t;
+      const d = getDay(logDate); d.notes = ta.value; save();
+      toast("メモに追加しました");
+    };
+    rec.onerror = () => toast("聞き取れませんでした");
+    rec.start();
+    return;
+  }
   if (e.target.id === "saveLogBtn") {
     const day = getDay(logDate);
     const v = $("#stepsInput").value.trim();
