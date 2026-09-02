@@ -231,8 +231,14 @@ body.hc .cal-day.rec { background: #000; }
 .more-body { padding: 4px 0 8px; }
 .more-body .card { box-shadow: none; }
 
+.doctor-exit { display: none; position: fixed; top: 12px; right: 12px; z-index: 200; padding: 14px 22px; font-size: 1.15rem; font-weight: 700; background: var(--accent); color: #fff; border: none; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.35); }
+body.doctor .doctor-exit { display: block; }
+body.doctor .bottom-nav, body.doctor .no-print { display: none !important; }
+body.doctor .tab-panel { display: none !important; }
+body.doctor #tab-report { display: block !important; }
+
 @media print {
-  .bottom-nav, .app-header, .no-print, .toast, .overlay { display: none !important; }
+  .bottom-nav, .app-header, .no-print, .toast, .overlay, .doctor-exit { display: none !important; }
   body { background: #fff; padding-bottom: 0; font-size: 12pt; }
   main { max-width: none; }
   .tab-panel { display: none; }

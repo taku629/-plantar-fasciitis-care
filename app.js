@@ -1110,11 +1110,12 @@ function renderReport() {
     </div>
     <div class="card no-print">
       <div class="btn-row">
+        <button class="btn btn-primary" id="doctorModeBtn">受診モード</button>
         <button class="btn btn-primary" id="printBtn">印刷 / PDF保存</button>
         <button class="btn" id="copyReportBtn">テキストをコピー</button>
         <button class="btn" id="lineShareBtn">LINEで週報を送る</button>
       </div>
-      <p class="muted" style="margin-top:8px">印刷画面は医師に見せる用。コピーしたテキストはLINEやメールで送れます。</p>
+      <p class="muted" style="margin-top:8px">受診モードは診察でそのまま見せる特大表示。印刷画面は医師に見せる用。コピーしたテキストはLINEやメールで送れます。</p>
     </div>
     <p class="muted" style="margin-top:8px">※このアプリは医療機器ではありません。症状の記録と自己管理を助けるものです。痛みが続く・悪化する場合は医療機関を受診してください。</p>`;
 }
@@ -1226,6 +1227,7 @@ document.addEventListener("click", e => {
   if (pain) {
     const day = getDay(activeTab === "log" ? logDate : todayKey());
     day[pain.dataset.painName] = Number(pain.dataset.pain);
+    if (navigator.vibrate) navigator.vibrate(8);
     const ok = save();
     renderers[activeTab]();
     if (ok) toast("記録しました");
@@ -1392,6 +1394,16 @@ document.addEventListener("click", e => {
     if (save()) toast("保存しました");
     return;
   }
+  if (e.target.id === "doctorModeBtn") {
+    document.body.classList.add("doctor");
+    document.documentElement.style.fontSize = "26px";
+    return;
+  }
+  if (e.target.closest("#doctorExit")) {
+    document.body.classList.remove("doctor");
+    applyUi();
+    return;
+  }
   if (e.target.id === "printBtn") return window.print();
   if (e.target.id === "lineShareBtn") {
     const text = reportText();
@@ -1495,6 +1507,11 @@ save();
 applyUi();
 const tabParam = qp.get("tab");
 switchTab(tabParam && Object.prototype.hasOwnProperty.call(renderers, tabParam) && !(state.settings.simple && ["log", "chart", "report"].includes(tabParam)) ? tabParam : "home");
+if (qp.get("mode") === "doctor") {
+  document.body.classList.add("doctor");
+  document.documentElement.style.fontSize = "26px";
+  switchTab("report");
+}
 sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
