@@ -125,7 +125,7 @@ const DEFAULT_SHOES = ["運動靴", "インソール付き靴", "革靴", "サ�
 
 /* ---------- state ---------- */
 function blankDay() {
-  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [] };
+  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [], night: [] };
 }
 function defaultSettings() {
   return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, hideWeight: true, anonId: null, lastTelemetry: null };
@@ -154,6 +154,7 @@ function sanitizeDay(x) {
   d.clinic = !!x.clinic;
   d.photos = Array.isArray(x.photos)
     ? x.photos.filter(p => typeof p === "string" && /^data:image\/(png|jpe?g|webp|gif);(base64,)?[A-Za-z0-9+/=,._~%-]*$/.test(p)).slice(0, 4) : [];
+  d.night = Array.isArray(x.night) ? x.night.slice(0, 4).map(v => !!v) : [];
   return d;
 }
 function sanitizeHospital(h) {
@@ -189,6 +190,7 @@ function normalizeState(s) {
   settings.hideWeight = "hideWeight" in settings ? !!settings.hideWeight : true;
   settings.anonId = typeof settings.anonId === "string" ? settings.anonId.slice(0, 64) : null;
   settings.lastTelemetry = typeof settings.lastTelemetry === "string" ? settings.lastTelemetry : null;
+  settings.shoeReset = (settings.shoeReset && typeof settings.shoeReset === "object" && !Array.isArray(settings.shoeReset)) ? settings.shoeReset : {};
   const days = {};
   if (s.days && typeof s.days === "object" && !Array.isArray(s.days)) {
     for (const [k, v] of Object.entries(s.days)) {
@@ -362,9 +364,10 @@ function weekendSummaryHTML() {
 // 靴ごとの累計歩行距離(km)。0.7m/歩で推定。どの競合にも無い独自指標
 function shoeMileage() {
   const km = {};
-  Object.values(state.days).forEach(d => {
+  const reset = state.settings.shoeReset || {};
+  Object.entries(state.days).forEach(([k, d]) => {
     if (!d || !d.steps || !Array.isArray(d.shoes)) return;
-    d.shoes.forEach(s => { km[s] = (km[s] || 0) + d.steps * 0.0007; });
+    d.shoes.forEach(s => { if (!reset[s] || k > reset[s]) km[s] = (km[s] || 0) + d.steps * 0.0007; });
   });
   return Object.entries(km).map(([name, kmv]) => ({ name, km: kmv }))
     .sort((a, b) => b.km - a.km);
@@ -373,6 +376,11 @@ function shoeMileage() {
 /* ---------- helpers ---------- */
 const $ = (sel, el) => (el || document).querySelector(sel);
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
+const NIGHT_ROUTINE = [
+  "足の裏を軽くさする・ほぐす(1分)",
+  "ふくらはぎをゆっくり伸ばす",
+  "明日履く靴を出しておく",
+];
 function fmtJP(key) {
   const d = new Date(key + "T00:00:00");
   return `${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`;
@@ -587,6 +595,12 @@ function renderHome() {
       }).join("")}
       <button class="btn btn-primary" data-goto="exercise" style="width:100%;margin-top:10px">体操を始める</button>
     </div>
+
+    ${hour >= 17 ? `<div class="card mission-card${NIGHT_ROUTINE.every((_, i) => day.night[i]) ? " done" : ""}">
+      <h2>寝る前の3分ルーティン</h2>
+      ${NIGHT_ROUTINE.map((txt, i) => `<button type="button" class="night-item${day.night[i] ? " on" : ""}" data-night="${i}">${day.night[i] ? "✓" : "○"} ${txt}</button>`).join("")}
+      ${NIGHT_ROUTINE.every((_, i) => day.night[i]) ? `<div class="muted">明日の朝が楽になります。おやすみなさい。</div>` : ""}
+    </div>` : ""}
 
     <div class="card">
       <h2>夜の痛み(寝る前に)</h2>
@@ -1177,8 +1191,8 @@ function renderSettings() {
         <input type="text" id="nameInput" value="${esc(state.settings.name)}" placeholder="例: 山田 花子"></label>
       <label class="field"><span>履物の候補(カンマ区切り)</span>
         <input type="text" id="shoesInput" value="${esc(state.settings.shoePresets.join(","))}"></label>
-      ${(() => { const m = shoeMileage(); return m.length ? `<div class="muted" style="font-size:.78rem;margin:4px 0 8px">${m.map(o =>
-        `${esc(o.name)}: 約${Math.round(o.km)}km${o.km >= 480 ? " <strong style=\"color:#C0392B\">— 替え時の目安</strong>" : ""}`).join("<br>")}</div>` : ""; })()}
+      ${(() => { const m = shoeMileage(); return m.length ? `<div style="font-size:.78rem;margin:4px 0 8px">${m.map(o =>
+        `<div class="shoe-km-row"><span class="muted">${esc(o.name)}: 約${Math.round(o.km)}km${o.km >= 480 ? " <strong style=\"color:#C0392B\">— 替え時の目安</strong>" : ""}</span><button type="button" class="shoe-reset" data-shoereset="${esc(o.name)}">買い替えた</button></div>`).join("")}</div>` : ""; })()}
       <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%">保存</button>
     </div>
     <div class="card">
@@ -1281,6 +1295,21 @@ document.addEventListener("click", e => {
   }
   const cal = e.target.closest("[data-cal]");
   if (cal) { logDate = cal.dataset.cal; switchTab("log"); return; }
+  const nt = e.target.closest("[data-night]");
+  if (nt) {
+    const day = getDay(todayKey());
+    const i = Number(nt.dataset.night);
+    while (day.night.length <= i) day.night.push(false);
+    day.night[i] = !day.night[i];
+    save(); renderHome(); return;
+  }
+  const sr = e.target.closest("[data-shoereset]");
+  if (sr) {
+    if (!state.settings.shoeReset) state.settings.shoeReset = {};
+    state.settings.shoeReset[sr.dataset.shoereset] = todayKey();
+    save(); renderSettings();
+    toast(`${sr.dataset.shoereset} の距離をリセットしました`); return;
+  }
   if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
   const dp = e.target.closest("[data-delphoto]");
   if (dp) {
