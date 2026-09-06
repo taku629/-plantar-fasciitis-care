@@ -287,18 +287,34 @@ function generateAdvice() {
     if (b - a >= 1) adv.push("体操をした日の翌朝は痛みが軽い傾向にあります。体操が効いています。");
     else if (a - b >= 1.5) adv.push("体操をした日の翌朝に痛みが強めです。ヒールレイズの回数を減らす等、量を調整しましょう。");
   }
-  // 歩きすぎ傾向
-  const heavyNext = [], lightNext = [];
+  // 歩きすぎ傾向 + 個人の負荷上限(翌朝の痛みが跳ねる歩数を自動検出)
+  const pairs = [];
   for (let i = 0; i < keys.length - 1; i++) {
     const next = map[keys[i]], cur = state.days[keys[i + 1]];
-    if (next && cur && next.morningPain !== null && cur.steps) {
-      (cur.steps >= 6000 ? heavyNext : lightNext).push(next.morningPain);
-    }
+    if (next && cur && next.morningPain !== null && next.morningPain !== undefined && cur.steps)
+      pairs.push({ s: cur.steps, p: next.morningPain });
   }
-  if (heavyNext.length >= 2 && lightNext.length >= 2) {
-    const a = heavyNext.reduce((x, y) => x + y) / heavyNext.length;
-    const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
-    if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
+  let limit = null;
+  if (pairs.length >= 6) {
+    const uniq = [...new Set(pairs.map(x => x.s))].sort((a, b) => a - b);
+    let bestGap = 0;
+    for (const t of uniq) {
+      const hi = pairs.filter(x => x.s >= t), lo = pairs.filter(x => x.s < t);
+      if (hi.length < 2 || lo.length < 2) continue;
+      const ha = hi.reduce((s, x) => s + x.p, 0) / hi.length, la = lo.reduce((s, x) => s + x.p, 0) / lo.length;
+      if (ha - la > bestGap) { bestGap = ha - la; limit = { t, gap: ha - la }; }
+    }
+    if (limit && limit.gap >= 0.8)
+      adv.push(`あなたの記録では、約${Math.round(limit.t / 500) * 500}歩を超えた日の翌朝は痛みが平均${limit.gap.toFixed(1)}強くなります。この歩数を目安に、越えそうな日は途中で休憩を入れましょう。`);
+  }
+  if (!limit) {
+    const heavyNext = [], lightNext = [];
+    pairs.forEach(x => (x.s >= 6000 ? heavyNext : lightNext).push(x.p));
+    if (heavyNext.length >= 2 && lightNext.length >= 2) {
+      const a = heavyNext.reduce((x, y) => x + y) / heavyNext.length;
+      const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
+      if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
+    }
   }
   // 曜日パターン検出(特定の曜日の朝に痛みが強い)
   const byWd = {};
@@ -1086,6 +1102,8 @@ function renderReport() {
   const medsDays = days.filter(x => x.d && x.d.meds).length;
   const clinicDays = days.filter(x => x.d && x.d.clinic).length;
   const photoCount = days.reduce((s, x) => s + (x.d?.photos?.length || 0), 0);
+  const weekPhotos = [];
+  [...days].reverse().forEach(x => (x.d?.photos || []).forEach(p => { if (weekPhotos.length < 8) weekPhotos.push({ k: x.k, p }); }));
 
   el.innerHTML = `
     <div class="card">
@@ -1110,6 +1128,7 @@ function renderReport() {
         ${photoCount ? `<tr><th>足の写真</th><td>${photoCount}枚(端末内保存)</td></tr>` : ""}
       </table>
       ${notes.length ? `<h3>メモ</h3>${notes.map(x => `<p class="muted">・${fmtJP(x.k)}: ${esc(x.d.notes)}</p>`).join("")}` : ""}
+      ${weekPhotos.length ? `<h3>足の写真(直近)</h3><div class="report-photos">${weekPhotos.map(x => `<figure><img src="${esc(x.p)}" alt="足の写真"><figcaption>${fmtJP(x.k)}</figcaption></figure>`).join("")}</div>` : ""}
       <h3>日ごとの記録</h3>
       <table>
         <tr><th>日付</th><th>朝</th><th>夜</th><th>歩数</th><th>体操</th></tr>
@@ -1208,6 +1227,7 @@ function renderSettings() {
       <p class="muted">記録はこのスマホの中だけに保存されます。機種変更前にバックアップを。</p>
       <div class="btn-row">
         <button class="btn" id="exportBtn">バックアップ(コピー)</button>
+        <button class="btn" id="exportCsvBtn">CSV(Excel用)</button>
         <button class="btn" id="importBtn">復元</button>
       </div>
     </div>
@@ -1449,6 +1469,18 @@ document.addEventListener("click", e => {
   }
   if (e.target.id === "exportBtn") {
     navigator.clipboard.writeText(JSON.stringify(state)).then(() => toast("バックアップをコピーしました"), () => toast("コピーできませんでした"));
+    return;
+  }
+  if (e.target.id === "exportCsvBtn") {
+    const escCsv = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = ["date,morning_pain,evening_pain,steps,standing,shoes,exercises_done,weight,meds,clinic,notes"];
+    Object.keys(state.days).sort().forEach(k => {
+      const d = state.days[k];
+      rows.push([k, d.morningPain ?? "", d.eveningPain ?? "", d.steps ?? "", d.standing ?? "",
+        escCsv((d.shoes || []).join("+")), Object.keys(d.exercises || {}).length,
+        d.weight ?? "", d.meds ? 1 : 0, d.clinic ? 1 : 0, escCsv(d.notes || "")].join(","));
+    });
+    navigator.clipboard.writeText("﻿" + rows.join("\n")).then(() => toast("CSVをコピーしました(ExcelやLINEに貼れます)"), () => toast("コピーできませんでした"));
     return;
   }
   if (e.target.id === "importBtn") {
