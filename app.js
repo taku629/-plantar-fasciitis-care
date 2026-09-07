@@ -122,10 +122,15 @@ const STANDING_OPTS = [
   { id: "much", label: "長時間立った" },
 ];
 const DEFAULT_SHOES = ["運動靴", "インソール付き靴", "革靴", "サンダル", "室内履き"];
+const SLEEP_OPTS = [
+  { id: "good", label: "ぐっすり眠れた" },
+  { id: "normal", label: "ふつう" },
+  { id: "bad", label: "よく眠れなかった" },
+];
 
 /* ---------- state ---------- */
 function blankDay() {
-  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [], night: [] };
+  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [], night: [], sleep: null };
 }
 function defaultSettings() {
   return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, hideWeight: true, anonId: null, lastTelemetry: null };
@@ -155,6 +160,7 @@ function sanitizeDay(x) {
   d.photos = Array.isArray(x.photos)
     ? x.photos.filter(p => typeof p === "string" && /^data:image\/(png|jpe?g|webp|gif);(base64,)?[A-Za-z0-9+/=,._~%-]*$/.test(p)).slice(0, 4) : [];
   d.night = Array.isArray(x.night) ? x.night.slice(0, 4).map(v => !!v) : [];
+  d.sleep = SLEEP_OPTS.some(o => o.id === x.sleep) ? x.sleep : null;
   return d;
 }
 function sanitizeHospital(h) {
@@ -337,6 +343,20 @@ function generateAdvice() {
   if (exDays7 >= 5) adv.push(`この1週間で${exDays7}日体操できています。とても良いペースです。`);
   else if (rec.length >= 7 && exDays7 <= 1)
     adv.push("体操があまりできていません。まずは「足底筋膜ストレッチ」1種類だけでも毎朝やってみましょう。");
+  // 睡眠と痛みの相関(悪く眠った翌朝は痛い?)
+  const slpMap = {}; rec.forEach(x => slpMap[x.k] = x.d);
+  const afterBad = [], afterGood = [];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const next = slpMap[keys[i]], cur = state.days[keys[i + 1]];
+    if (next && cur && next.morningPain !== null && next.morningPain !== undefined && cur.sleep) {
+      (cur.sleep === "bad" ? afterBad : afterGood).push(next.morningPain);
+    }
+  }
+  if (afterBad.length >= 2 && afterGood.length >= 3) {
+    const a = afterBad.reduce((x, y) => x + y) / afterBad.length;
+    const b = afterGood.reduce((x, y) => x + y) / afterGood.length;
+    if (a - b >= 1) adv.push(`よく眠れなかった日の翌朝は痛みが強め(平均${a.toFixed(1)})。寝る前のルーティンを試してみましょう。`);
+  }
   // 記録ストリーク
   let streak = 0;
   for (const k of recentDayKeys(60)) { if (state.days[k] && state.days[k].morningPain !== null && state.days[k].morningPain !== undefined) streak++; else break; }
@@ -872,6 +892,7 @@ function renderExercises() {
         <div class="ex-tip">${ex.tip}</div>
         <div class="ex-actions">
           ${ex.seconds ? `<button class="btn" data-timer="${ex.id}">タイマー(${ex.seconds}秒)</button>` : ""}
+          <button class="btn" data-voice="${ex.id}">🔊 手順を読み上げ</button>
           <button class="btn ${done ? "" : "btn-primary"}" data-didset="${ex.id}" ${done ? "disabled" : ""}>
             ${done ? "完了 ✔" : `1セット完了(${c}/${ex.sets})`}
           </button>
@@ -976,6 +997,7 @@ function renderLog() {
       <h3>薬・通院</h3>
       <div class="chips">
         <button class="chip${day.meds ? " on" : ""}" data-flag="meds">薬を飲んだ</button>
+        ${SLEEP_OPTS.map(o => `<button class="chip${day.sleep === o.id ? " on" : ""}" data-sleep="${o.id}">${o.label}</button>`).join("")}
         <button class="chip${day.clinic ? " on" : ""}" data-flag="clinic">通院した</button>
       </div>
       <h3>足の写真(腫れ・見た目の記録)</h3>
@@ -1275,6 +1297,22 @@ document.addEventListener("click", e => {
   if (step) { getDay(logDate).steps = Number(step.dataset.step); save(); renderLog(); return; }
   const st = e.target.closest("[data-standing]");
   if (st) { getDay(logDate).standing = st.dataset.standing; save(); renderLog(); return; }
+  const sl = e.target.closest("[data-sleep]");
+  if (sl) {
+    const day = getDay(logDate);
+    day.sleep = day.sleep === sl.dataset.sleep ? null : sl.dataset.sleep;
+    save(); renderLog(); return;
+  }
+  const vo = e.target.closest("[data-voice]");
+  if (vo) {
+    if (!("speechSynthesis" in window)) { toast("この端末では音声読み上げに対応していません"); return; }
+    const ex = EXERCISES.find(x => x.id === vo.dataset.voice);
+    if (!ex) return;
+    if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; }
+    const u = new SpeechSynthesisUtterance(`${ex.name}。${ex.desc}。${ex.tip}`);
+    u.lang = "ja-JP"; u.rate = 0.9;
+    speechSynthesis.speak(u); return;
+  }
   const fl = e.target.closest("[data-flag]");
   if (fl) {
     const day = getDay(logDate);
