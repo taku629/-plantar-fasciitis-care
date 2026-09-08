@@ -9,7 +9,7 @@ const EXERCISES = [
   {
     id: "fascia",
     name: "足底筋膜ストレッチ",
-    sets: 3, seconds: 30, perSet: "30秒", sit: true,
+    sets: 3, seconds: 30, perSet: "30秒",
     desc: "椅子に座って片方の足を反対の膝に乗せ、つま先を手で体の方へゆっくり反らせます。かかとの下〜土踏まずが伸びるのを感じましょう。左右各30秒。",
     tip: "起床直後と、長く座ったあと歩き出す前にやると特に効果的です。",
   },
@@ -30,7 +30,7 @@ const EXERCISES = [
   {
     id: "towel",
     name: "タオルつまみ",
-    sets: 1, seconds: 0, perSet: "10回", sit: true,
+    sets: 1, seconds: 0, perSet: "10回",
     desc: "床に置いたタオルを足の指で手繰り寄せるようにしてつまみます。10回を左右で。",
     tip: "足の指の筋肉を鍛えて土踏まずを支えます。",
   },
@@ -44,35 +44,35 @@ const EXERCISES = [
   {
     id: "ice",
     name: "足裏アイシング(ペットボトル)",
-    sets: 1, seconds: 300, perSet: "5〜10分", sit: true,
+    sets: 1, seconds: 300, perSet: "5〜10分",
     desc: "冷凍したペットボトルを床に置き、足裏でゆっくり前後に転がします。5〜10分。",
     tip: "歩いたあとや痛みが強いときに。直接氷を当てるより安全です。",
   },
   {
     id: "ballroll",
     name: "ボールころころマッサージ",
-    sets: 1, seconds: 120, perSet: "1〜2分", sit: true,
+    sets: 1, seconds: 120, perSet: "1〜2分",
     desc: "テニスボールかゴルフボールを土踏まずの下に置き、かかとからつま先へゆっくり転がします。左右1〜2分ずつ。",
     tip: "強く押しすぎなくてOK。じんわり気持ちいい程度で。",
   },
   {
     id: "archmass",
     name: "土踏まず指圧マッサージ",
-    sets: 1, seconds: 120, perSet: "1〜2分", sit: true,
+    sets: 1, seconds: 120, perSet: "1〜2分",
     desc: "座って足を膝に乗せ、両手の親指で土踏まずをかかとからつま先へゆっくり押しほぐします。左右1〜2分。",
     tip: "朝イチのこわばりや、歩いたあとの疲れに。",
   },
   {
     id: "toesplay",
     name: "足指グーパー",
-    sets: 2, seconds: 0, perSet: "10回", sit: true,
+    sets: 2, seconds: 0, perSet: "10回",
     desc: "座って足の指をギュッと握って5秒 → パッと広げて5秒。10回を左右で。",
     tip: "足の小さな筋肉を動かして土踏まずを支えます。",
   },
   {
     id: "ankleabc",
     name: "足首アルファベット",
-    sets: 1, seconds: 0, perSet: "A〜Z", sit: true,
+    sets: 1, seconds: 0, perSet: "A〜Z",
     desc: "座って片足を少し浮かせ、つま先でアルファベットをAからZまで大きく書きます。反対の足も。",
     tip: "足首まわり全体をやさしく動かします。",
   },
@@ -122,15 +122,10 @@ const STANDING_OPTS = [
   { id: "much", label: "長時間立った" },
 ];
 const DEFAULT_SHOES = ["運動靴", "インソール付き靴", "革靴", "サンダル", "室内履き"];
-const SLEEP_OPTS = [
-  { id: "good", label: "ぐっすり眠れた" },
-  { id: "normal", label: "ふつう" },
-  { id: "bad", label: "よく眠れなかった" },
-];
 
 /* ---------- state ---------- */
 function blankDay() {
-  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [], night: [], sleep: null };
+  return { morningPain: null, eveningPain: null, steps: null, standing: null, shoes: [], notes: "", exercises: {}, weight: null, meds: false, clinic: false, photos: [] };
 }
 function defaultSettings() {
   return { name: "", shoePresets: DEFAULT_SHOES.slice(), font: "normal", hc: false, simple: false, share: false, remind: false, hideWeight: true, anonId: null, lastTelemetry: null };
@@ -159,8 +154,6 @@ function sanitizeDay(x) {
   d.clinic = !!x.clinic;
   d.photos = Array.isArray(x.photos)
     ? x.photos.filter(p => typeof p === "string" && /^data:image\/(png|jpe?g|webp|gif);(base64,)?[A-Za-z0-9+/=,._~%-]*$/.test(p)).slice(0, 4) : [];
-  d.night = Array.isArray(x.night) ? x.night.slice(0, 4).map(v => !!v) : [];
-  d.sleep = SLEEP_OPTS.some(o => o.id === x.sleep) ? x.sleep : null;
   return d;
 }
 function sanitizeHospital(h) {
@@ -196,7 +189,6 @@ function normalizeState(s) {
   settings.hideWeight = "hideWeight" in settings ? !!settings.hideWeight : true;
   settings.anonId = typeof settings.anonId === "string" ? settings.anonId.slice(0, 64) : null;
   settings.lastTelemetry = typeof settings.lastTelemetry === "string" ? settings.lastTelemetry : null;
-  settings.shoeReset = (settings.shoeReset && typeof settings.shoeReset === "object" && !Array.isArray(settings.shoeReset)) ? settings.shoeReset : {};
   const days = {};
   if (s.days && typeof s.days === "object" && !Array.isArray(s.days)) {
     for (const [k, v] of Object.entries(s.days)) {
@@ -293,70 +285,25 @@ function generateAdvice() {
     if (b - a >= 1) adv.push("体操をした日の翌朝は痛みが軽い傾向にあります。体操が効いています。");
     else if (a - b >= 1.5) adv.push("体操をした日の翌朝に痛みが強めです。ヒールレイズの回数を減らす等、量を調整しましょう。");
   }
-  // 歩きすぎ傾向 + 個人の負荷上限(翌朝の痛みが跳ねる歩数を自動検出)
-  const pairs = [];
+  // 歩きすぎ傾向
+  const heavyNext = [], lightNext = [];
   for (let i = 0; i < keys.length - 1; i++) {
     const next = map[keys[i]], cur = state.days[keys[i + 1]];
-    if (next && cur && next.morningPain !== null && next.morningPain !== undefined && cur.steps)
-      pairs.push({ s: cur.steps, p: next.morningPain });
-  }
-  let limit = null;
-  if (pairs.length >= 6) {
-    const uniq = [...new Set(pairs.map(x => x.s))].sort((a, b) => a - b);
-    let bestGap = 0;
-    for (const t of uniq) {
-      const hi = pairs.filter(x => x.s >= t), lo = pairs.filter(x => x.s < t);
-      if (hi.length < 2 || lo.length < 2) continue;
-      const ha = hi.reduce((s, x) => s + x.p, 0) / hi.length, la = lo.reduce((s, x) => s + x.p, 0) / lo.length;
-      if (ha - la > bestGap) { bestGap = ha - la; limit = { t, gap: ha - la }; }
-    }
-    if (limit && limit.gap >= 0.8)
-      adv.push(`あなたの記録では、約${Math.round(limit.t / 500) * 500}歩を超えた日の翌朝は痛みが平均${limit.gap.toFixed(1)}強くなります。この歩数を目安に、越えそうな日は途中で休憩を入れましょう。`);
-  }
-  if (!limit) {
-    const heavyNext = [], lightNext = [];
-    pairs.forEach(x => (x.s >= 6000 ? heavyNext : lightNext).push(x.p));
-    if (heavyNext.length >= 2 && lightNext.length >= 2) {
-      const a = heavyNext.reduce((x, y) => x + y) / heavyNext.length;
-      const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
-      if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
+    if (next && cur && next.morningPain !== null && cur.steps) {
+      (cur.steps >= 6000 ? heavyNext : lightNext).push(next.morningPain);
     }
   }
-  // 曜日パターン検出(特定の曜日の朝に痛みが強い)
-  const byWd = {};
-  rec.forEach(x => { const w = new Date(x.k + "T12:00:00").getDay(); (byWd[w] = byWd[w] || []).push(x.d.morningPain); });
-  const overall = rec.reduce((s, x) => s + x.d.morningPain, 0) / rec.length;
-  const wdHit = Object.entries(byWd).filter(([, v]) => v.length >= 2)
-    .map(([w, v]) => ({ w: +w, avg: v.reduce((a, b) => a + b) / v.length, n: v.length }))
-    .find(o => o.avg - overall >= 1.5);
-  if (wdHit) {
-    const prevWd = WD[(wdHit.w + 6) % 7];
-    adv.push(`${WD[wdHit.w]}曜の朝は痛みが強めです(平均${wdHit.avg.toFixed(1)})。${prevWd}曜の活動が響いているかもしれません — ${prevWd}曜は歩きすぎないよう休憩を多めに。`);
+  if (heavyNext.length >= 2 && lightNext.length >= 2) {
+    const a = heavyNext.reduce((x, y) => x + y) / heavyNext.length;
+    const b = lightNext.reduce((x, y) => x + y) / lightNext.length;
+    if (a - b >= 1) adv.push("たくさん歩いた日の翌朝は痛みが強い傾向です。長く歩く日は30分ごとに休憩を入れましょう。");
   }
-  // 靴の使用距離(買い替えアラート)
-  const wornOut = shoeMileage().find(o => o.km >= 480);
-  if (wornOut)
-    adv.push(`「${esc(wornOut.name)}」は約${Math.round(wornOut.km)}km使用しました(靴の寿命の目安は約500km)。靴底が減ると痛みの原因になります — 買い替えを検討してみてください。`);
   // 体操の継続率
   const last7 = recentDayKeys(7);
   const exDays7 = last7.filter(k => state.days[k] && Object.keys(state.days[k].exercises).length > 0).length;
   if (exDays7 >= 5) adv.push(`この1週間で${exDays7}日体操できています。とても良いペースです。`);
   else if (rec.length >= 7 && exDays7 <= 1)
     adv.push("体操があまりできていません。まずは「足底筋膜ストレッチ」1種類だけでも毎朝やってみましょう。");
-  // 睡眠と痛みの相関(悪く眠った翌朝は痛い?)
-  const slpMap = {}; rec.forEach(x => slpMap[x.k] = x.d);
-  const afterBad = [], afterGood = [];
-  for (let i = 0; i < keys.length - 1; i++) {
-    const next = slpMap[keys[i]], cur = state.days[keys[i + 1]];
-    if (next && cur && next.morningPain !== null && next.morningPain !== undefined && cur.sleep) {
-      (cur.sleep === "bad" ? afterBad : afterGood).push(next.morningPain);
-    }
-  }
-  if (afterBad.length >= 2 && afterGood.length >= 3) {
-    const a = afterBad.reduce((x, y) => x + y) / afterBad.length;
-    const b = afterGood.reduce((x, y) => x + y) / afterGood.length;
-    if (a - b >= 1) adv.push(`よく眠れなかった日の翌朝は痛みが強め(平均${a.toFixed(1)})。寝る前のルーティンを試してみましょう。`);
-  }
   // 記録ストリーク
   let streak = 0;
   for (const k of recentDayKeys(60)) { if (state.days[k] && state.days[k].morningPain !== null && state.days[k].morningPain !== undefined) streak++; else break; }
@@ -364,59 +311,9 @@ function generateAdvice() {
   return adv;
 }
 
-// 記録と相性の良い靴(朝の痛みが最も軽い靴)
-function bestShoe() {
-  const keys = recentDayKeys(30);
-  const byShoe = {};
-  keys.forEach(k => {
-    const d = state.days[k];
-    if (d && d.morningPain !== null && d.morningPain !== undefined)
-      (d.shoes || []).forEach(s => { (byShoe[s] = byShoe[s] || []).push(d.morningPain); });
-  });
-  const arr = Object.entries(byShoe).filter(([, v]) => v.length >= 3)
-    .map(([s, v]) => ({ s, avg: v.reduce((a, b) => a + b) / v.length })).sort((a, b) => a.avg - b.avg);
-  return arr.length >= 2 ? arr[0].s : null;
-}
-
-// 週末(土・日)だけ出る今週のふりかえりカード
-function weekendSummaryHTML() {
-  const dow = new Date().getDay();
-  if (dow !== 0 && dow !== 6) return "";
-  const wk = recentDayKeys(7).map(k => state.days[k]).filter(Boolean);
-  const recd = wk.filter(d => d.morningPain !== null && d.morningPain !== undefined);
-  if (!recd.length) return "";
-  const avg = recd.reduce((s, d) => s + d.morningPain, 0) / recd.length;
-  const prev = recentDayKeys(14).slice(7).map(k => state.days[k])
-    .filter(d => d && d.morningPain !== null && d.morningPain !== undefined);
-  const prevAvg = prev.length ? prev.reduce((s, d) => s + d.morningPain, 0) / prev.length : null;
-  const diff = prevAvg === null ? null : avg - prevAvg;
-  const exDays = wk.filter(d => Object.keys(d.exercises || {}).length > 0).length;
-  return `<div class="card"><h2>今週のふりかえり</h2>
-    <p style="font-size:1rem">記録 <strong>${recd.length}</strong>日 · 朝の痛み平均 <strong>${avg.toFixed(1)}</strong>${diff !== null ? ` <span class="delta ${diff < -0.4 ? "good" : diff > 0.4 ? "bad" : ""}">(先週比${diff > 0 ? "+" : ""}${diff.toFixed(1)})</span>` : ""}</p>
-    <p style="font-size:1rem">体操できた日: <strong>${exDays}</strong>日</p>
-    <p class="muted" style="font-size:.8rem">${diff !== null && diff <= -0.8 ? "先週より良くなっています。この調子です。" : diff !== null && diff >= 0.8 ? "先週より痛みが強めです。歩数と靴を見直してみましょう。" : "来週もコツコツ続けましょう。"}</p></div>`;
-}
-
-// 靴ごとの累計歩行距離(km)。0.7m/歩で推定。どの競合にも無い独自指標
-function shoeMileage() {
-  const km = {};
-  const reset = state.settings.shoeReset || {};
-  Object.entries(state.days).forEach(([k, d]) => {
-    if (!d || !d.steps || !Array.isArray(d.shoes)) return;
-    d.shoes.forEach(s => { if (!reset[s] || k > reset[s]) km[s] = (km[s] || 0) + d.steps * 0.0007; });
-  });
-  return Object.entries(km).map(([name, kmv]) => ({ name, km: kmv }))
-    .sort((a, b) => b.km - a.km);
-}
-
 /* ---------- helpers ---------- */
 const $ = (sel, el) => (el || document).querySelector(sel);
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
-const NIGHT_ROUTINE = [
-  "足の裏を軽くさする・ほぐす(1分)",
-  "ふくらはぎをゆっくり伸ばす",
-  "明日履く靴を出しておく",
-];
 function fmtJP(key) {
   const d = new Date(key + "T00:00:00");
   return `${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`;
@@ -572,7 +469,6 @@ function renderHome() {
     return `<span class="dot${rec ? " on" : ""}"></span>`;
   }).join("");
   const mission = todayMission(day);
-  const best = bestShoe();
   const hour = new Date().getHours();
   const remindMsg = hour >= 19 && day.eveningPain === null
     ? "夜の痛みがまだ記録されていません"
@@ -594,11 +490,9 @@ function renderHome() {
       </div>
       <div class="dot-row">${dots}</div>
       <div class="muted" style="font-size:.72rem">直近14日 ●=記録あり</div>
-      ${best ? `<div class="muted" style="font-size:.78rem;margin-top:4px">おすすめ履物: <strong>${esc(best)}</strong>(あなたの記録と相性◎)</div>` : ""}
     </div>
 
     ${remindMsg ? `<div class="card warn-card"><strong>${remindMsg}</strong><div class="muted" style="font-size:.8rem">下のボタンから記録できます。</div></div>` : ""}
-    ${weekendSummaryHTML()}
 
     <div class="card mission-card${mission.done ? " done" : ""}">
       <h2>今日のミッション</h2>
@@ -617,9 +511,6 @@ function renderHome() {
       ${delta !== null ? `<p class="delta ${delta < 0 ? "good" : delta > 0 ? "bad" : ""}">昨日より ${delta === 0 ? "同じ" : delta < 0 ? `${delta}(楽になった)` : `+${delta}(悪化)`}</p>` : ""}
     </div>
 
-    ${day.morningPain !== null && day.morningPain >= 6 ? `<div class="card warn-card"><strong>今日は無理しない日</strong><div class="muted" style="font-size:.8rem;margin-top:4px">朝の痛みが強めです。ストレッチとアイシング中心にして、長距離の歩行は控えめに。ヒールレイズ系は休んでOKです。</div></div>` : ""}
-    ${day.morningPain !== null && day.morningPain <= 2 ? `<div class="card"><strong>今日は調子が良さそうです</strong><div class="muted" style="font-size:.8rem;margin-top:4px">痛みが軽い日こそ、体操をしっかりやるチャンスです。</div></div>` : ""}
-
     <div class="card">
       <h2>今日の体操 <span class="streak">${done}/${MENU_SIZE} 完了</span></h2>
       ${todayExercises().map(ex => {
@@ -631,12 +522,6 @@ function renderHome() {
       }).join("")}
       <button class="btn btn-primary" data-goto="exercise" style="width:100%;margin-top:10px">体操を始める</button>
     </div>
-
-    ${hour >= 17 ? `<div class="card mission-card${NIGHT_ROUTINE.every((_, i) => day.night[i]) ? " done" : ""}">
-      <h2>寝る前の3分ルーティン</h2>
-      ${NIGHT_ROUTINE.map((txt, i) => `<button type="button" class="night-item${day.night[i] ? " on" : ""}" data-night="${i}">${day.night[i] ? "✓" : "○"} ${txt}</button>`).join("")}
-      ${NIGHT_ROUTINE.every((_, i) => day.night[i]) ? `<div class="muted">明日の朝が楽になります。おやすみなさい。</div>` : ""}
-    </div>` : ""}
 
     <div class="card">
       <h2>夜の痛み(寝る前に)</h2>
@@ -868,18 +753,14 @@ function exArt(id) {
 
 const openEx = new Set();
 let timer = { id: null, exId: null, remain: 0, running: false };
-let sitOnly = false;
 
 function renderExercises() {
   const el = $("#tab-exercise");
   const day = getDay(todayKey());
-  const list = todayExercises().filter(ex => !sitOnly || ex.sit);
   el.innerHTML = `
     <div class="card"><h2>今日のリハビリ体操</h2>
-      <p class="muted">メニューは日替わりです。全部やらなくてもOK、毎日少しずつ続けるのが一番の治療です。</p>
-      <button class="chip${sitOnly ? " on" : ""}" data-sitonly style="margin-top:6px">座ったままできる体操だけ</button></div>
-    ${list.length ? "" : `<div class="card"><p class="muted">今日の座り体操はありません。明日のメニューをご覧ください。</p></div>`}
-    ${list.map(ex => {
+      <p class="muted">メニューは日替わりです。全部やらなくてもOK、毎日少しずつ続けるのが一番の治療です。</p></div>
+    ${todayExercises().map(ex => {
       const c = day.exercises[ex.id] || 0;
       const done = c >= ex.sets;
       return `<details class="ex-item${done ? " done" : ""}" data-exid="${ex.id}"${openEx.has(ex.id) ? " open" : ""}>
@@ -892,7 +773,6 @@ function renderExercises() {
         <div class="ex-tip">${ex.tip}</div>
         <div class="ex-actions">
           ${ex.seconds ? `<button class="btn" data-timer="${ex.id}">タイマー(${ex.seconds}秒)</button>` : ""}
-          <button class="btn" data-voice="${ex.id}">🔊 手順を読み上げ</button>
           <button class="btn ${done ? "" : "btn-primary"}" data-didset="${ex.id}" ${done ? "disabled" : ""}>
             ${done ? "完了 ✔" : `1セット完了(${c}/${ex.sets})`}
           </button>
@@ -997,7 +877,6 @@ function renderLog() {
       <h3>薬・通院</h3>
       <div class="chips">
         <button class="chip${day.meds ? " on" : ""}" data-flag="meds">薬を飲んだ</button>
-        ${SLEEP_OPTS.map(o => `<button class="chip${day.sleep === o.id ? " on" : ""}" data-sleep="${o.id}">${o.label}</button>`).join("")}
         <button class="chip${day.clinic ? " on" : ""}" data-flag="clinic">通院した</button>
       </div>
       <h3>足の写真(腫れ・見た目の記録)</h3>
@@ -1013,7 +892,6 @@ function renderLog() {
       </div>
       <label class="field"><span>メモ(痛む動作・できごとなど)</span>
         <textarea id="notesInput">${esc(day.notes)}</textarea></label>
-      <button class="btn" id="voiceBtn" style="margin-top:6px">🎤 声で入力(メモに追加)</button>
       <button class="btn btn-primary" id="saveLogBtn" style="width:100%">保存する</button>
     </div>`;
 }
@@ -1124,8 +1002,6 @@ function renderReport() {
   const medsDays = days.filter(x => x.d && x.d.meds).length;
   const clinicDays = days.filter(x => x.d && x.d.clinic).length;
   const photoCount = days.reduce((s, x) => s + (x.d?.photos?.length || 0), 0);
-  const weekPhotos = [];
-  [...days].reverse().forEach(x => (x.d?.photos || []).forEach(p => { if (weekPhotos.length < 8) weekPhotos.push({ k: x.k, p }); }));
 
   el.innerHTML = `
     <div class="card">
@@ -1150,7 +1026,6 @@ function renderReport() {
         ${photoCount ? `<tr><th>足の写真</th><td>${photoCount}枚(端末内保存)</td></tr>` : ""}
       </table>
       ${notes.length ? `<h3>メモ</h3>${notes.map(x => `<p class="muted">・${fmtJP(x.k)}: ${esc(x.d.notes)}</p>`).join("")}` : ""}
-      ${weekPhotos.length ? `<h3>足の写真(直近)</h3><div class="report-photos">${weekPhotos.map(x => `<figure><img src="${esc(x.p)}" alt="足の写真"><figcaption>${fmtJP(x.k)}</figcaption></figure>`).join("")}</div>` : ""}
       <h3>日ごとの記録</h3>
       <table>
         <tr><th>日付</th><th>朝</th><th>夜</th><th>歩数</th><th>体操</th></tr>
@@ -1165,12 +1040,11 @@ function renderReport() {
     </div>
     <div class="card no-print">
       <div class="btn-row">
-        <button class="btn btn-primary" id="doctorModeBtn">受診モード</button>
         <button class="btn btn-primary" id="printBtn">印刷 / PDF保存</button>
         <button class="btn" id="copyReportBtn">テキストをコピー</button>
         <button class="btn" id="lineShareBtn">LINEで週報を送る</button>
       </div>
-      <p class="muted" style="margin-top:8px">受診モードは診察でそのまま見せる特大表示。印刷画面は医師に見せる用。コピーしたテキストはLINEやメールで送れます。</p>
+      <p class="muted" style="margin-top:8px">印刷画面は医師に見せる用。コピーしたテキストはLINEやメールで送れます。</p>
     </div>
     <p class="muted" style="margin-top:8px">※このアプリは医療機器ではありません。症状の記録と自己管理を助けるものです。痛みが続く・悪化する場合は医療機関を受診してください。</p>`;
 }
@@ -1232,8 +1106,6 @@ function renderSettings() {
         <input type="text" id="nameInput" value="${esc(state.settings.name)}" placeholder="例: 山田 花子"></label>
       <label class="field"><span>履物の候補(カンマ区切り)</span>
         <input type="text" id="shoesInput" value="${esc(state.settings.shoePresets.join(","))}"></label>
-      ${(() => { const m = shoeMileage(); return m.length ? `<div style="font-size:.78rem;margin:4px 0 8px">${m.map(o =>
-        `<div class="shoe-km-row"><span class="muted">${esc(o.name)}: 約${Math.round(o.km)}km${o.km >= 480 ? " <strong style=\"color:#C0392B\">— 替え時の目安</strong>" : ""}</span><button type="button" class="shoe-reset" data-shoereset="${esc(o.name)}">買い替えた</button></div>`).join("")}</div>` : ""; })()}
       <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%">保存</button>
     </div>
     <div class="card">
@@ -1249,7 +1121,6 @@ function renderSettings() {
       <p class="muted">記録はこのスマホの中だけに保存されます。機種変更前にバックアップを。</p>
       <div class="btn-row">
         <button class="btn" id="exportBtn">バックアップ(コピー)</button>
-        <button class="btn" id="exportCsvBtn">CSV(Excel用)</button>
         <button class="btn" id="importBtn">復元</button>
       </div>
     </div>
@@ -1283,7 +1154,6 @@ document.addEventListener("click", e => {
   if (pain) {
     const day = getDay(activeTab === "log" ? logDate : todayKey());
     day[pain.dataset.painName] = Number(pain.dataset.pain);
-    if (navigator.vibrate) navigator.vibrate(8);
     const ok = save();
     renderers[activeTab]();
     if (ok) toast("記録しました");
@@ -1297,22 +1167,6 @@ document.addEventListener("click", e => {
   if (step) { getDay(logDate).steps = Number(step.dataset.step); save(); renderLog(); return; }
   const st = e.target.closest("[data-standing]");
   if (st) { getDay(logDate).standing = st.dataset.standing; save(); renderLog(); return; }
-  const sl = e.target.closest("[data-sleep]");
-  if (sl) {
-    const day = getDay(logDate);
-    day.sleep = day.sleep === sl.dataset.sleep ? null : sl.dataset.sleep;
-    save(); renderLog(); return;
-  }
-  const vo = e.target.closest("[data-voice]");
-  if (vo) {
-    if (!("speechSynthesis" in window)) { toast("この端末では音声読み上げに対応していません"); return; }
-    const ex = EXERCISES.find(x => x.id === vo.dataset.voice);
-    if (!ex) return;
-    if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; }
-    const u = new SpeechSynthesisUtterance(`${ex.name}。${ex.desc}。${ex.tip}`);
-    u.lang = "ja-JP"; u.rate = 0.9;
-    speechSynthesis.speak(u); return;
-  }
   const fl = e.target.closest("[data-flag]");
   if (fl) {
     const day = getDay(logDate);
@@ -1353,21 +1207,6 @@ document.addEventListener("click", e => {
   }
   const cal = e.target.closest("[data-cal]");
   if (cal) { logDate = cal.dataset.cal; switchTab("log"); return; }
-  const nt = e.target.closest("[data-night]");
-  if (nt) {
-    const day = getDay(todayKey());
-    const i = Number(nt.dataset.night);
-    while (day.night.length <= i) day.night.push(false);
-    day.night[i] = !day.night[i];
-    save(); renderHome(); return;
-  }
-  const sr = e.target.closest("[data-shoereset]");
-  if (sr) {
-    if (!state.settings.shoeReset) state.settings.shoeReset = {};
-    state.settings.shoeReset[sr.dataset.shoereset] = todayKey();
-    save(); renderSettings();
-    toast(`${sr.dataset.shoereset} の距離をリセットしました`); return;
-  }
   if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
   const dp = e.target.closest("[data-delphoto]");
   if (dp) {
@@ -1385,27 +1224,7 @@ document.addEventListener("click", e => {
   if (rg) { $("#tab-chart").dataset.range = rg.dataset.range; renderChart(); return; }
   const wk = e.target.closest("[data-week]");
   if (wk) { reportOffset = Number(wk.dataset.week); renderReport(); return; }
-  if (e.target.dataset && e.target.dataset.sitonly !== undefined) {
-    sitOnly = !sitOnly; renderExercises(); return;
-  }
   if (e.target.closest("#btnSettings")) return switchTab("settings");
-  if (e.target.id === "voiceBtn") {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { toast("この端末では音声入力が使えません"); return; }
-    const rec = new SR();
-    rec.lang = "ja-JP"; rec.interimResults = false;
-    toast("聞き取り中… 話してください");
-    rec.onresult = ev => {
-      const t = ev.results[0][0].transcript;
-      const ta = $("#notesInput");
-      ta.value = (ta.value ? ta.value + " " : "") + t;
-      const d = getDay(logDate); d.notes = ta.value; save();
-      toast("メモに追加しました");
-    };
-    rec.onerror = () => toast("聞き取れませんでした");
-    rec.start();
-    return;
-  }
   if (e.target.id === "saveLogBtn") {
     const day = getDay(logDate);
     const v = $("#stepsInput").value.trim();
@@ -1481,16 +1300,6 @@ document.addEventListener("click", e => {
     if (save()) toast("保存しました");
     return;
   }
-  if (e.target.id === "doctorModeBtn") {
-    document.body.classList.add("doctor");
-    document.documentElement.style.fontSize = "26px";
-    return;
-  }
-  if (e.target.closest("#doctorExit")) {
-    document.body.classList.remove("doctor");
-    applyUi();
-    return;
-  }
   if (e.target.id === "printBtn") return window.print();
   if (e.target.id === "lineShareBtn") {
     const text = reportText();
@@ -1507,18 +1316,6 @@ document.addEventListener("click", e => {
   }
   if (e.target.id === "exportBtn") {
     navigator.clipboard.writeText(JSON.stringify(state)).then(() => toast("バックアップをコピーしました"), () => toast("コピーできませんでした"));
-    return;
-  }
-  if (e.target.id === "exportCsvBtn") {
-    const escCsv = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = ["date,morning_pain,evening_pain,steps,standing,shoes,exercises_done,weight,meds,clinic,notes"];
-    Object.keys(state.days).sort().forEach(k => {
-      const d = state.days[k];
-      rows.push([k, d.morningPain ?? "", d.eveningPain ?? "", d.steps ?? "", d.standing ?? "",
-        escCsv((d.shoes || []).join("+")), Object.keys(d.exercises || {}).length,
-        d.weight ?? "", d.meds ? 1 : 0, d.clinic ? 1 : 0, escCsv(d.notes || "")].join(","));
-    });
-    navigator.clipboard.writeText("﻿" + rows.join("\n")).then(() => toast("CSVをコピーしました(ExcelやLINEに貼れます)"), () => toast("コピーできませんでした"));
     return;
   }
   if (e.target.id === "importBtn") {
@@ -1606,11 +1403,6 @@ save();
 applyUi();
 const tabParam = qp.get("tab");
 switchTab(tabParam && Object.prototype.hasOwnProperty.call(renderers, tabParam) && !(state.settings.simple && ["log", "chart", "report"].includes(tabParam)) ? tabParam : "home");
-if (qp.get("mode") === "doctor") {
-  document.body.classList.add("doctor");
-  document.documentElement.style.fontSize = "26px";
-  switchTab("report");
-}
 sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
