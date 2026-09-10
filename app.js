@@ -4,6 +4,8 @@
 const LS_KEY = "sokuteiData";
 // バックエンドAPIのURL。空ならフィードはPubMedを直接取得し、テレメトリは無効。
 const API_BASE = "";
+// Google Fitの歩数取得に使うOAuthクライアントID(Google Cloudで発行)。空ならボタン非表示。
+const GOOGLE_FIT_CLIENT_ID = "";
 
 const EXERCISES = [
   {
@@ -865,6 +867,7 @@ function renderLog() {
       <div class="chips">${STEP_PRESETS.map(p =>
         `<button class="chip${day.steps === p.value ? " on" : ""}" data-step="${p.value}">${p.label}</button>`).join("")}
       </div>
+      ${GOOGLE_FIT_CLIENT_ID ? `<button class="btn" id="fitBtn" style="margin-top:6px">📱 スマホの歩数データから取得(Google Fit)</button>` : ""}
       <label class="field"><span>正確な歩数(任意)</span>
         <input type="number" id="stepsInput" inputmode="numeric" value="${day.steps ?? ""}" placeholder="例: 3500"></label>
       <h3>立っていた時間</h3>
@@ -1145,6 +1148,60 @@ function switchTab(tab) {
   window.scrollTo(0, 0);
 }
 
+/* ---------- Google Fit 歩数取得 ---------- */
+let gisLoaded = false, gisLoading = false, fitToken = null;
+function loadGis() {
+  return new Promise((resolve, reject) => {
+    if (gisLoaded) return resolve();
+    if (gisLoading) { const t = setInterval(() => { if (gisLoaded) { clearInterval(t); resolve(); } }, 200); return; }
+    gisLoading = true;
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = () => { gisLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error("gsi load failed"));
+    document.head.appendChild(s);
+  });
+}
+async function fetchFitSteps() {
+  try {
+    toast("Googleにログインしています…");
+    await loadGis();
+    const token = await new Promise((resolve, reject) => {
+      const tc = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_FIT_CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/fitness.activity.read",
+        callback: r => r.error ? reject(r) : resolve(r.access_token),
+      });
+      tc.requestAccessToken(fitToken ? { prompt: "" } : {});
+    });
+    fitToken = token;
+    const start = new Date(logDate + "T00:00:00").getTime();
+    const end = start + 86400000 - 1;
+    const res = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aggregateBy: [{ dataTypeName: "com.google.step_count.delta" }],
+        bucketByTime: { durationMillis: 86400000 },
+        startTimeMillis: start, endTimeMillis: end,
+      }),
+    });
+    if (!res.ok) throw new Error("fit api " + res.status);
+    const j = await res.json();
+    let steps = 0;
+    (j.bucket || []).forEach(b => (b.dataset || []).forEach(ds =>
+      (ds.point || []).forEach(p => (p.value || []).forEach(v => { steps += v.intVal || 0; }))));
+    if (steps > 0) {
+      getDay(logDate).steps = steps;
+      if (save()) { renderLog(); toast(`${steps.toLocaleString()}歩を取得しました`); }
+    } else {
+      toast("その日の歩数データがGoogle Fitにありませんでした");
+    }
+  } catch (err) {
+    toast("歩数を取得できませんでした(Google Fit連携を確認してください)");
+  }
+}
+
 document.addEventListener("click", e => {
   const nav = e.target.closest(".nav-btn");
   if (nav) return switchTab(nav.dataset.tab);
@@ -1313,6 +1370,9 @@ document.addEventListener("click", e => {
   if (e.target.id === "copyReportBtn") {
     navigator.clipboard.writeText(reportText()).then(() => toast("コピーしました"), () => toast("コピーできませんでした"));
     return;
+  }
+  if (e.target.id === "fitBtn") {
+    fetchFitSteps(); return;
   }
   if (e.target.id === "exportBtn") {
     navigator.clipboard.writeText(JSON.stringify(state)).then(() => toast("バックアップをコピーしました"), () => toast("コピーできませんでした"));
