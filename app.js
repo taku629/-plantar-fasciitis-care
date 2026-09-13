@@ -847,6 +847,11 @@ function markSet(exId) {
 
 /* ---------- LOG ---------- */
 let logDate = todayKey();
+function maybeFetchFitSteps(day) {
+  if (!GOOGLE_FIT_CLIENT_ID || day.steps !== null || fitTriedDates.has(logDate)) return;
+  fitTriedDates.add(logDate);
+  fetchFitSteps();
+}
 function renderLog() {
   const el = $("#tab-log");
   const day = getDay(logDate);
@@ -867,7 +872,7 @@ function renderLog() {
       <div class="chips">${STEP_PRESETS.map(p =>
         `<button class="chip${day.steps === p.value ? " on" : ""}" data-step="${p.value}">${p.label}</button>`).join("")}
       </div>
-      ${GOOGLE_FIT_CLIENT_ID ? `<button class="btn" id="fitBtn" style="margin-top:6px">📱 スマホの歩数データから取得(Google Fit)</button>` : ""}
+
       <label class="field"><span>正確な歩数(任意)</span>
         <input type="number" id="stepsInput" inputmode="numeric" value="${day.steps ?? ""}" placeholder="例: 3500"></label>
       <h3>立っていた時間</h3>
@@ -897,6 +902,7 @@ function renderLog() {
         <textarea id="notesInput">${esc(day.notes)}</textarea></label>
       <button class="btn btn-primary" id="saveLogBtn" style="width:100%">保存する</button>
     </div>`;
+  maybeFetchFitSteps(day);
 }
 
 /* ---------- CHART ---------- */
@@ -1150,6 +1156,7 @@ function switchTab(tab) {
 
 /* ---------- Google Fit 歩数取得 ---------- */
 let gisLoaded = false, gisLoading = false, fitToken = null;
+const fitTriedDates = new Set();
 function loadGis() {
   return new Promise((resolve, reject) => {
     if (gisLoaded) return resolve();
@@ -1164,7 +1171,6 @@ function loadGis() {
 }
 async function fetchFitSteps() {
   try {
-    toast("Googleにログインしています…");
     await loadGis();
     const token = await new Promise((resolve, reject) => {
       const tc = google.accounts.oauth2.initTokenClient({
@@ -1370,9 +1376,6 @@ document.addEventListener("click", e => {
   if (e.target.id === "copyReportBtn") {
     navigator.clipboard.writeText(reportText()).then(() => toast("コピーしました"), () => toast("コピーできませんでした"));
     return;
-  }
-  if (e.target.id === "fitBtn") {
-    fetchFitSteps(); return;
   }
   if (e.target.id === "exportBtn") {
     navigator.clipboard.writeText(JSON.stringify(state)).then(() => toast("バックアップをコピーしました"), () => toast("コピーできませんでした"));
