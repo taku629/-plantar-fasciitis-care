@@ -4,8 +4,8 @@
 const LS_KEY = "sokuteiData";
 // バックエンドAPIのURL。空ならフィードはPubMedを直接取得し、テレメトリは無効。
 const API_BASE = "";
-// Google Fitの歩数取得に使うOAuthクライアントID(Google Cloudで発行)。空ならボタン非表示。
-const GOOGLE_FIT_CLIENT_ID = "";
+// Google Fitの歩数取得に使うOAuthクライアントID(Google Cloudで発行)。空なら自動取得しない。
+const GOOGLE_FIT_CLIENT_ID = "297081453404-dhf6r73ab84ilve8bim7bdd5s2q2amp3.apps.googleusercontent.com";
 
 const EXERCISES = [
   {
