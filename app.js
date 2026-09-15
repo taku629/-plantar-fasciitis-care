@@ -847,11 +847,6 @@ function markSet(exId) {
 
 /* ---------- LOG ---------- */
 let logDate = todayKey();
-function maybeFetchFitSteps(day) {
-  if (!GOOGLE_FIT_CLIENT_ID || day.steps !== null || fitTriedDates.has(logDate)) return;
-  fitTriedDates.add(logDate);
-  fetchFitSteps();
-}
 function renderLog() {
   const el = $("#tab-log");
   const day = getDay(logDate);
@@ -902,7 +897,6 @@ function renderLog() {
         <textarea id="notesInput">${esc(day.notes)}</textarea></label>
       <button class="btn btn-primary" id="saveLogBtn" style="width:100%">保存する</button>
     </div>`;
-  maybeFetchFitSteps(day);
 }
 
 /* ---------- CHART ---------- */
@@ -1379,6 +1373,14 @@ document.addEventListener("click", e => {
   }
   if (e.target.id === "exportBtn") {
     navigator.clipboard.writeText(JSON.stringify(state)).then(() => toast("バックアップをコピーしました"), () => toast("コピーできませんでした"));
+    return;
+  }
+  if (e.target.closest("#tab-log")) {
+    const day = getDay(logDate);
+    if (GOOGLE_FIT_CLIENT_ID && day.steps === null && !fitTriedDates.has(logDate)) {
+      fitTriedDates.add(logDate);
+      fetchFitSteps();
+    }
     return;
   }
   if (e.target.id === "importBtn") {
