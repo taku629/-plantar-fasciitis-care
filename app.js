@@ -1376,6 +1376,7 @@ document.addEventListener("click", e => {
     return;
   }
   if (e.target.closest("#tab-log")) {
+    if (e.target.closest("input, textarea, select")) return;
     const day = getDay(logDate);
     if (GOOGLE_FIT_CLIENT_ID && day.steps === null && !fitTriedDates.has(logDate)) {
       fitTriedDates.add(logDate);
