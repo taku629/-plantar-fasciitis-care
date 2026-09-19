@@ -194,7 +194,8 @@ function normalizeState(s) {
   const days = {};
   if (s.days && typeof s.days === "object" && !Array.isArray(s.days)) {
     for (const [k, v] of Object.entries(s.days)) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(k)) days[k] = sanitizeDay(v);
+      const yr = /^(\d{4})-\d{2}-\d{2}$/.exec(k)?.[1];
+      if (yr && +yr >= 2000 && +yr <= 2100) days[k] = sanitizeDay(v);
     }
   }
   const hospitals = Array.isArray(s.hospitals)
@@ -847,6 +848,23 @@ function markSet(exId) {
 
 /* ---------- LOG ---------- */
 let logDate = todayKey();
+// 記録タブの未保存入力(歩数・体重・メモ)を現在表示中の日付の記録へ退避させる
+function persistLogInputs() {
+  if (activeTab !== "log") return;
+  const day = getDay(logDate);
+  const si = $("#stepsInput"), wi = $("#weightInput"), ni = $("#notesInput");
+  if (si) {
+    const v = si.value.trim();
+    if (v === "") day.steps = null;
+    else { const n = Number(v); if (isFinite(n) && n >= 0 && n <= 200000) day.steps = Math.round(n); }
+  }
+  if (wi) {
+    const wv = wi.value.trim();
+    if (wv === "") day.weight = null;
+    else { const w = Number(wv); if (isFinite(w) && w >= 20 && w <= 300) day.weight = Math.round(w * 10) / 10; }
+  }
+  if (ni) day.notes = ni.value.slice(0, 5000);
+}
 function renderLog() {
   const el = $("#tab-log");
   const day = getDay(logDate);
@@ -1139,6 +1157,7 @@ let activeTab = "home";
 const renderers = { home: renderHome, exercise: renderExercises, log: renderLog, chart: renderChart, report: renderReport, settings: renderSettings };
 function switchTab(tab) {
   if (!Object.prototype.hasOwnProperty.call(renderers, tab)) tab = "home";
+  if (tab !== "log") persistLogInputs();
   if (state.settings.simple && ["log", "chart", "report"].includes(tab)) tab = "home";
   activeTab = tab;
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
@@ -1203,6 +1222,8 @@ async function fetchFitSteps() {
 }
 
 document.addEventListener("click", e => {
+  if (activeTab === "log" && e.target.closest("#tab-log") && !e.target.closest("input, textarea, select, [data-night]"))
+    persistLogInputs();
   const nav = e.target.closest(".nav-btn");
   if (nav) return switchTab(nav.dataset.tab);
   const goto = e.target.closest("[data-goto]");
@@ -1424,7 +1445,13 @@ document.addEventListener("toggle", e => {
 }, true);
 
 document.addEventListener("change", e => {
-  if (e.target.id === "logDateInput") { logDate = e.target.value || todayKey(); renderLog(); }
+  if (e.target.id === "logDateInput") {
+    persistLogInputs();
+    const v = e.target.value;
+    const yr = /^\d{4}-\d{2}-\d{2}$/.test(v) ? Number(v.slice(0, 4)) : 0;
+    logDate = (yr >= 2000 && yr <= 2100 && v <= todayKey()) ? v : todayKey();
+    renderLog();
+  }
   if (e.target.id === "photoInput" && e.target.files && e.target.files[0]) addPhoto(e.target.files[0]);
 });
 document.addEventListener("input", e => {
