@@ -59,3 +59,10 @@ Every chip/date change inside `#tab-log` calls `save(); renderLog();` which rebu
 
 ## Native GTK file picker (photo add)
 `#addPhotoBtn` opens GTK dialog: coordinates work — double-click the filename row (e.g. `/home/ubuntu/test-foot.png`, generate via PIL) then the dialog closes and `#photoList` gets a thumbnail. Single click+Return also works.
+
+## v11 CSP + notification specifics (Phase 6 verified)
+- CSP meta is fully compatible (external app.js only, no inline handlers/eval, `img-src data:` covers photos, `connect-src` covers eutils+googleapis, `frame-src`/`script-src` allow GIS). Zero violations observed across all flows.
+- **Feed wipe bug (live-verified)**: `loadFeed()` runs once via `feedLoaded` guard, but `renderHome()` rebuilds the whole section incl. a fresh「読み込み中…」`#feedBody` on EVERY re-render — after the fetch resolves and fills it, any subsequent home render (pain button!) wipes it to「読み込み中…」permanently for the session. Repro: load → wait feed → click a home pain button → feed stuck loading.
+- **Notification flow**: ON = requestPermission → sw.ready (5s race) → `periodicSync.register("daily-reminder")` → done() sets remind+save+`reg.showNotification` (real desktop notification verified + `reg.getNotifications()`). Non-installed envs reject register → catch → fallback toast「定期通知の登録に失敗(ホーム画面追加済み?)」but still done(). **Gap**: NO boot-time re-register — toggle-ON-before-install leaves remind=true with no tag even after installing (must re-toggle). OFF = remind=false + unregister.
+- `elementFromPoint`/`getBoundingClientRect` is essential when the "Chrome for Testing" info bar is visible — it shrinks viewport 1069→1017 and shifts ALL ss↔page y-mappings (~30px); buttons visually at ss(408,514) map to page(632,664) not the old formula's guess.
+- `/home/ubuntu/cdp_eval.py` exists: `python3 cdp_eval.py '<js>'` — websocket-client CDP eval with `suppress_origin=True` + `awaitPromise:true` + `returnByValue:true`. Use whenever browser_console won't attach.
