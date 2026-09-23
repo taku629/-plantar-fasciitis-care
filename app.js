@@ -225,7 +225,9 @@ function save() {
     return false;
   }
 }
-function dayKey(d) { return d.toISOString().slice(0, 10); }
+function dayKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function todayKey() { return dayKey(new Date()); }
 function getDay(key) {
   if (!state.days[key]) state.days[key] = blankDay();
@@ -1458,7 +1460,10 @@ document.addEventListener("change", e => {
     logDate = (yr >= 2000 && yr <= 2100 && v <= todayKey()) ? v : todayKey();
     renderLog();
   }
-  if (e.target.id === "photoInput" && e.target.files && e.target.files[0]) addPhoto(e.target.files[0]);
+  if (e.target.id === "photoInput" && e.target.files && e.target.files[0]) {
+    addPhoto(e.target.files[0]);
+    e.target.value = "";
+  }
 });
 document.addEventListener("input", e => {
   if (["hospName", "hospCost", "hospPhone", "hospUrl", "hospMemo"].includes(e.target.id))
