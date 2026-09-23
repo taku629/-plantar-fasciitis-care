@@ -665,26 +665,32 @@ function updateHospStars() {
     b.classList.toggle("on", Number(b.dataset.hstar) <= hospRating);
   });
 }
+let feedItems = null;
+function renderFeedItems(items) {
+  const body = $("#feedBody");
+  if (!body) return;
+  body.outerHTML = items.slice(0, 5).map(i =>
+    `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div style="font-weight:700;font-size:.92rem">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(i.title)}</a>` : esc(i.title)}</div>
+      <div class="muted">${esc(i.summary)}</div>
+      <div class="muted" style="font-size:.75rem">${esc(i.source)}${i.kind === "research" || /pubmed/i.test(i.source) ? ` <span class="feed-tag">${articleTag(i.title)}</span>` : ""}</div>
+    </div>`).join("") || `<p class="muted">情報を取得できませんでした</p>`;
+}
 function loadFeed() {
-  if (feedLoaded) return;
+  if (feedLoaded) {
+    if (feedItems) renderFeedItems(feedItems);
+    return;
+  }
   feedLoaded = true;
-  const render = items => {
-    const body = $("#feedBody");
-    if (!body) return;
-    body.outerHTML = items.slice(0, 5).map(i =>
-      `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
-        <div style="font-weight:700;font-size:.92rem">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(i.title)}</a>` : esc(i.title)}</div>
-        <div class="muted">${esc(i.summary)}</div>
-        <div class="muted" style="font-size:.75rem">${esc(i.source)}${i.kind === "research" || /pubmed/i.test(i.source) ? ` <span class="feed-tag">${articleTag(i.title)}</span>` : ""}</div>
-      </div>`).join("") || `<p class="muted">情報を取得できませんでした</p>`;
-  };
   const load = API_BASE
     ? fetch(`${API_BASE}/feed`).then(r => r.json()).then(d => d.items)
     : fetchPubMedItems().then(items => FEED_TIPS.concat(items));
-  load.then(render).catch(() => {
-    const body = $("#feedBody");
-    if (body) body.outerHTML = FEED_TIPS.map(i =>
-      `<div style="padding:8px 0"><div style="font-weight:700;font-size:.92rem">${esc(i.title)}</div><div class="muted">${esc(i.summary)}</div></div>`).join("");
+  load.then(items => {
+    feedItems = items;
+    renderFeedItems(items);
+  }).catch(() => {
+    feedItems = FEED_TIPS;
+    renderFeedItems(FEED_TIPS);
   });
   if (!API_BASE) return;
   fetch(`${API_BASE}/insights`).then(r => r.json()).then(d => {
@@ -1499,4 +1505,13 @@ switchTab(tabParam && Object.prototype.hasOwnProperty.call(renderers, tabParam) 
 sendTelemetry();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
+  if (state.settings.remind) {
+    navigator.serviceWorker.ready.then(reg => {
+      if (!reg.periodicSync || !("Notification" in window) || Notification.permission !== "granted") return;
+      reg.periodicSync.getTags().then(tags => {
+        if (!tags.includes("daily-reminder"))
+          reg.periodicSync.register("daily-reminder", { minInterval: 12 * 3600 * 1000 }).catch(() => {});
+      }).catch(() => {});
+    }).catch(() => {});
+  }
 }
