@@ -589,7 +589,7 @@ function renderHome() {
       <h2>足底腱膜炎の最新情報</h2>
       <p class="muted" id="feedBody">読み込み中…</p>
     </div>
-    <div class="card" id="insightsCard"></div>
+    <div class="card" id="insightsCard" style="display:none"></div>
       </div>
     </details>`;
   updateHospStars();
@@ -698,6 +698,7 @@ function loadFeed() {
   fetch(`${API_BASE}/insights`).then(r => r.json()).then(d => {
     const card = $("#insightsCard");
     if (!card || d.users < 3) { if (card) card.style.display = "none"; return; }
+    card.style.display = "";
     card.innerHTML = `<h2>みんなの傾向(匿名集計)</h2>
       <p class="muted">参加者 ${d.users}人・朝の痛みの平均 ${d.avg_morning_pain ?? "—"}</p>
       ${d.shoe_stats.length ? `<p class="muted">履物ごとの平均痛み: ${d.shoe_stats.map(s => `${esc(s.shoe)} ${s.avg_pain}(n=${s.n})`).join(" / ")}</p>` : ""}`;
