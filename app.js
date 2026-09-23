@@ -1186,11 +1186,12 @@ function loadGis() {
     const s = document.createElement("script");
     s.src = "https://accounts.google.com/gsi/client";
     s.onload = () => { gisLoaded = true; resolve(); };
-    s.onerror = () => reject(new Error("gsi load failed"));
+    s.onerror = () => { gisLoading = false; reject(new Error("gsi load failed")); };
     document.head.appendChild(s);
   });
 }
 async function fetchFitSteps() {
+  const key = logDate;
   try {
     await loadGis();
     const token = await new Promise((resolve, reject) => {
@@ -1202,7 +1203,7 @@ async function fetchFitSteps() {
       tc.requestAccessToken(fitToken ? { prompt: "" } : {});
     });
     fitToken = token;
-    const start = new Date(logDate + "T00:00:00").getTime();
+    const start = new Date(key + "T00:00:00").getTime();
     const end = start + 86400000 - 1;
     const res = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
       method: "POST",
@@ -1219,8 +1220,8 @@ async function fetchFitSteps() {
     (j.bucket || []).forEach(b => (b.dataset || []).forEach(ds =>
       (ds.point || []).forEach(p => (p.value || []).forEach(v => { steps += v.intVal || 0; }))));
     if (steps > 0) {
-      getDay(logDate).steps = steps;
-      if (save()) { renderLog(); toast(`${steps.toLocaleString()}歩を取得しました`); }
+      getDay(key).steps = steps;
+      if (save()) { if (logDate === key) renderLog(); toast(`${steps.toLocaleString()}歩を取得しました`); }
     } else {
       toast("その日の歩数データがGoogle Fitにありませんでした");
     }
@@ -1292,7 +1293,7 @@ document.addEventListener("click", e => {
     return;
   }
   const cal = e.target.closest("[data-cal]");
-  if (cal) { logDate = cal.dataset.cal; switchTab("log"); return; }
+  if (cal) { logDate = cal.dataset.cal <= todayKey() ? cal.dataset.cal : todayKey(); switchTab("log"); return; }
   if (e.target.id === "addPhotoBtn") { $("#photoInput").click(); return; }
   const dp = e.target.closest("[data-delphoto]");
   if (dp) {
