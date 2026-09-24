@@ -1470,6 +1470,9 @@ document.addEventListener("change", e => {
 document.addEventListener("input", e => {
   if (["hospName", "hospCost", "hospPhone", "hospUrl", "hospMemo"].includes(e.target.id))
     hospDraft[e.target.id] = e.target.value;
+  if (e.target.id === "nameInput") state.settings.name = e.target.value.trim();
+  if (e.target.id === "shoesInput")
+    state.settings.shoePresets = e.target.value.split(/[,、]/).map(s => s.trim()).filter(Boolean);
 });
 
 function addPhoto(file) {
