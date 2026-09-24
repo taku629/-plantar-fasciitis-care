@@ -1,4 +1,4 @@
-const CACHE = "sokutei-care-v15";
+const CACHE = "sokutei-care-v16";
 const ASSETS = [
   "./",
   "./index.html",

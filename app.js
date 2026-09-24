@@ -1177,19 +1177,19 @@ function switchTab(tab) {
 }
 
 /* ---------- Google Fit 歩数取得 ---------- */
-let gisLoaded = false, gisLoading = false, fitToken = null;
+let gisLoaded = false, gisPromise = null, fitToken = null;
 const fitTriedDates = new Set();
 function loadGis() {
-  return new Promise((resolve, reject) => {
-    if (gisLoaded) return resolve();
-    if (gisLoading) { const t = setInterval(() => { if (gisLoaded) { clearInterval(t); resolve(); } }, 200); return; }
-    gisLoading = true;
+  if (gisLoaded) return Promise.resolve();
+  if (gisPromise) return gisPromise;
+  gisPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
     s.src = "https://accounts.google.com/gsi/client";
     s.onload = () => { gisLoaded = true; resolve(); };
-    s.onerror = () => { gisLoading = false; reject(new Error("gsi load failed")); };
+    s.onerror = () => { gisPromise = null; reject(new Error("gsi load failed")); };
     document.head.appendChild(s);
   });
+  return gisPromise;
 }
 async function fetchFitSteps() {
   const key = logDate;
